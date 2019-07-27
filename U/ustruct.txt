@@ -1,0 +1,5 @@
+USTRUCT(BlueprintType)
+struct F
+{
+	GENERATED_BODY()
+};

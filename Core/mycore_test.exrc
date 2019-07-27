@@ -1,0 +1,1 @@
+:source mycore.vimrc
