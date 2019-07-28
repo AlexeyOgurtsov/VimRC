@@ -3,6 +3,13 @@
 :set nowrap
 :set number
 
+:function! BoolNot(Val)
+	:if a:Val
+		return 0
+	:else
+		return 1
+	:endif
+:endfunction
 "string util heler functions for text
 "Appends a line to list if it's not empty
 "
@@ -41,7 +48,7 @@
 :endfunction
 :function! IdentBlock(Lines, Num)
 	let l:i = 0
-	:while l:i < len(a:Num)
+	:while l:i < len(a:Lines)
 		let a:Lines[l:i] = IdentLine(a:Lines[l:i], a:Num)
 		let l:i = l:i + 1
 	:endwhile

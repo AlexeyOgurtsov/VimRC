@@ -44,26 +44,32 @@
 " (like "class" or "template<class> class ")
 " Each name may be optionally prefixed with ORDER number
 :function! GetTemplParamsString(TemplParams, IsWithClass)
-	let l:line = "template"
+	:if a:IsWithClass
+		let l:line = "template"
+	:else
+		let l:line = ""
+	:endif
 	let l:OrderedTemplNames = keys(a:TemplParams)
 	:call sort(l:OrderedTemplNames)
 " TODO2:    remove the Number prefix
 	:let l:ParamIndex = 0
-	let l:line = l:line . "<"
-		:for TemplName in l:OrderedTemplNames
-			"Appending comma if it's not the first argument
-			:if l:ParamIndex > 0
-				let l:line = l:line . ", "
-			:endif
-			" Forming parameter member string
-			:if a:IsWithClass
-				let l:line = l:line . a:TemplParams[TemplName] . " "
-			:endif
-			let l:line = l:line . TemplName
-			"Increment param index
-			let l:ParamIndex = l:ParamIndex + 1
-		:endfor
-	let l:line = l:line . ">"
+	:if len(a:TemplParams) > 0
+		let l:line = l:line . "<"
+			:for TemplName in l:OrderedTemplNames
+				"Appending comma if it's not the first argument
+				:if l:ParamIndex > 0
+					let l:line = l:line . ", "
+				:endif
+				" Forming parameter member string
+				:if a:IsWithClass
+					let l:line = l:line . a:TemplParams[TemplName] . " "
+				:endif
+				let l:line = l:line . TemplName
+				"Increment param index
+				let l:ParamIndex = l:ParamIndex + 1
+			:endfor
+		let l:line = l:line . ">"
+	:endif
 	return l:line
 :endfunction
 "Function member class prefix string
@@ -79,15 +85,15 @@
 :function! GetLine_CppFuncDecl_General(Name, ContentString, ReturnType, OptionString)
 	let l:declaration_string = ""
 	"Virtual if necessary"
-	:if a:OptionString =~ "Virt"
+	:if a:OptionString =~ "Virt;"
 		let l:declaration_string = l:declaration_string . "virtual "	
 	:endif
 	"Forming result string
 	let l:declaration_string = l:declaration_string . a:ReturnType.' '.a:Name.'('.a:ContentString.')'
-	:if a:OptionString =~ "Def"
+	:if a:OptionString =~ "Def;"
 		let l:declaration_string = l:declaration_string . " =default"	
 	:endif
-	:if a:OptionString =~ "Delete"
+	:if a:OptionString =~ "Delete;"
 		let l:declaration_string = l:declaration_string . " =delete"	
 	:endif
 	echo "DEBUG: GetLine_CppFuncDecl_General: OptionString=". a:OptionString
@@ -101,13 +107,70 @@
 	let l:formatted_decl_line = l:declaration_string.';'
 	:call append(a:LineNumber, l:formatted_decl_line)
 :endfunction
+"*** Calculates default return statemen lines for function
+:function! GetLines_DefaultReturnStmt(Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
+	let l:Lines = []
+	:if (a:ReturnType != "void") && (a:ReturnType != "")
+		let l:ReturnStmt = "return ReturnType{};"
+		:call add(l:Lines, l:ReturnStmt)
+	:endif
+	return l:Lines
+:endfunction
+:function! GetLines_CppFuncDefaultBody(ReturnStmt, ContentString, ReturnType, OptionString)
+	let l:Lines = []
+	let l:ReturnStmtLines = deepcopy(a:ReturnStmt)
+	:call IdentBlock(l:ReturnStmtLines, 1)
+	:call add(l:Lines, "{")
+	:call extend(l:Lines, l:ReturnStmtLines)
+	:call add(l:Lines, "}")
+	return l:Lines
+:endfunction
+"*** Function implementation header
+:function! GetLines_CppFuncImplHeader(Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
+	let l:Lines = []
+	let l:TemplHeader = GetTemplParamsString(a:TemplParams, 1)
+	"Form Func Header
+	:if len(a:ReturnType) > 0
+		let l:FuncHeader = a:ReturnType . " "
+	:else
+		let l:FuncHeader = ""
+	:endif
+	let l:FuncHeader =  l:FuncHeader . GetCppClassMemberPrefix(a:ClassName, a:TemplParams) . a:Name . "(" . a:ContentString . ")"
+	"Form up result
+	:if len(a:TemplParams) > 0
+		:call add(l:Lines, l:TemplHeader)
+	:endif
+	:call add(l:Lines, l:FuncHeader)
+	return l:Lines
+:endfunction
 "*** Function definition
 "*** Function's both declaration and definition
 "*** WARNING! Lines are NOT idented
 :function! GetLines_CppFunc(OutDefinition, Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
 	let l:decl_lines = []
-	:call add(l:decl_lines, GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString) . ';')
-	"TODO: Definition
+	let l:header_line = GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString)
+	let l:ReturnStmt = GetLines_DefaultReturnStmt(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
+	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, a:ContentString, a:ReturnType, a:OptionString)
+	:let l:GenImpl = (a:OptionString !~ "NoImpl;") && (a:OptionString !~ "Def;")
+	:if BoolNot(l:GenImpl) || (a:OptionString !~ "Inline;")
+		"Non-inlining or should not gen impl,
+		"then we should not provide the body inside declaration
+		let l:header_line = l:header_line . ";"
+		:call add(l:decl_lines, l:header_line)
+		"Generate function definition in cpp file
+		:if l:GenImpl
+			let l:impl_header = GetLines_CppFuncImplHeader(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
+			:call extend(a:OutDefinition, l:impl_header)
+			:call extend(a:OutDefinition, l:func_body)
+		:endif
+	:else
+		"Here we should provide body inside declaration
+		:if l:GenImpl
+			:call add(l:decl_lines, l:header_line)
+			"Inlining body
+			:call extend(l:decl_lines, l:func_body)
+		:endif
+	:endif
 	return l:decl_lines
 :endfunction
 "*
@@ -226,43 +289,58 @@
 	:call add(l:lines, GetClassNameOnly(a:Name, a:IsStruct))
 	return l:lines
 :endfunction
-"* Declare destructor if necessary (based on options)
-"* Returns: 
-"*	public declaration part
-"*	OutDefinition             -     definition (into .cpp file)
-"*	OutPrivateDeclaration     -     private declaration part
-:function! GetLines_Destructor_General(OutDefinition, OutPrivateDeclaration, ClassName, TemplParams, OptionString)
-	"Option flags
-	let l:ShouldGenerate = a:OptionString !~ "NoDtor"
-	:if ! l:ShouldGenerate
-		return []
-	:endif 
+"* Add destruction function (based on options)
+:function! GetLines_CppDestructorFunc(OutDefinition, ClassName, TemplParams, OptionString)
 	"Virtual
-	let l:IsVirtualDtor = (a:OptionString =~ "VirtDtor") || (a:OptionString =~ "I")
+	let l:IsVirtualDtor = (a:OptionString =~ "VirtDtor;") || (a:OptionString =~ "I;")
 	"Default/Delete
-	let l:IsDef = 1 "TODO
+	let l:IsDef = (a:OptionString !~ "Cust;") && (a:OptionString !~ "CustDtor;") && (a:OptionString !~ "Ptr;")
 	let l:IsDeleted = 0 "TODO
+	let l:ShouldInline = (a:OptionString =~ "Inline;") || (a:OptionString =~ "InlineDtor;")
+	let l:NoImpl = (a:OptionString =~ "NoImpl;")
 	"Forming result
 	let l:PublicDeclaration = []
-		let l:definition = []
 		let l:FunctionName = '~' .  a:ClassName "As we have destructor, function name is the same as class + ~
 		let l:FunctionReturnType = "" "As we have destructor, function return type is empty
 		let l:FuncOptions = ""
 		let l:ContentString = ""
 		:if l:IsVirtualDtor
-			let l:FuncOptions = l:FuncOptions . ";virt"
+			let l:FuncOptions = l:FuncOptions . "Virt;"
 		:endif
 		:if l:IsDef
-			let l:FuncOptions = l:FuncOptions . ";Def"
+			let l:FuncOptions = l:FuncOptions . "Def;"
 		:endif
 		:if l:IsDeleted
-			let l:FuncOptions = l:FuncOptions . ";Delete"
+			let l:FuncOptions = l:FuncOptions . "Delete;"
 		:endif
-		let l:decl = GetLines_CppFunc(l:definition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
+		:if l:ShouldInline
+			let l:FuncOptions = l:FuncOptions . "Inline;"
+		:endif
+		:if l:NoImpl
+			let l:FuncOptions = l:FuncOptions . "NoImpl;"
+		:endif
+		let l:decl = GetLines_CppFunc(a:OutDefinition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
 		"TODO: Why we extend public always? How about private part?
 		:call extend(l:PublicDeclaration, l:decl)
-		:call extend(a:OutPrivateDeclaration, l:definition)
 	return l:PublicDeclaration
+:endfunction
+"* Declare destructor if necessary (based on options)
+"* Returns: 
+"*	public declaration part
+"*	OutDefinition             -     definition (into .cpp file)
+"*	OutPrivateDeclaration     -     private declaration part
+:function! GetLines_Destructor_General(OutDefinition, OutPrivateDeclaration, IsStruct, ClassName, TemplParams, OptionString)
+	:if a:IsStruct 
+		let l:ShouldGenerate = (a:OptionString =~ "ForceDtor;")
+	:else
+		" For classes, and if no ForceDtor:
+		let l:ShouldGenerate = (a:OptionString !~ "NoDtor;") || (a:OptionString =~ "ForceDtor;")
+	:endif
+	:if ! l:ShouldGenerate
+		return []
+	:endif 
+ 	let l:decl_lines = GetLines_CppDestructorFunc(a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString)
+	return l:decl_lines
 :endfunction
 "* Declare default ctor(s) if necessary (based on options)
 "* Returns: 
@@ -287,7 +365,7 @@
 	"Destructor
  	let l:destructor_definition = []
 	let l:destructor_priv = []
-	let l:destructor_public = GetLines_Destructor_General(l:destructor_definition, l:destructor_priv, a:Name, a:TemplParams, a:OptionString)
+	let l:destructor_public = GetLines_Destructor_General(l:destructor_definition, l:destructor_priv, a:IsStruct, a:Name, a:TemplParams, a:OptionString)
 	"DefaultCtor/ArgumentCtor
  	let l:default_ctor_definition = []
 	let l:default_ctor_priv = []
@@ -309,7 +387,9 @@
 	:call IdentBlock(l:ExtraPrivateLinesAbove_Idented, 1)
 	:call extend(l:lines, l:ExtraPrivateLinesAbove_Idented)
 	"Public section
-	:call add(l:lines, "public:")
+	:if BoolNot(a:IsStruct)
+		:call add(l:lines, "public:")
+	:endif
 	:let l:public_lines = []
 	:call Extend_WithBlank(l:public_lines, l:destructor_public)
 	:call Extend_WithBlank(l:public_lines, l:default_ctor_public)
@@ -319,13 +399,25 @@
 "TODO: append comparison/equality operators
 	:call add(l:lines, "")
 	"Private section
-	:call add(l:lines, "private:")
 	:let l:private_lines = []
 	:call Extend_WithBlank(l:private_lines, l:destructor_priv)
 	:call Extend_WithBlank(l:private_lines, l:default_ctor_priv)
 	:call Extend_WithBlank(l:private_lines, l:copy_move_priv)
-	:call IdentBlock(l:private_lines, 1)
-	:call extend(l:lines, l:private_lines)
+	"Should we include private section
+	:if (len(l:private_lines) > 0) || (a:OptionString =~ "ForcePriv;")
+		"We always should include private section if at least one
+		"private line is generated
+		let l:IncludePrivate = 1;
+	:else
+		"For classes we include private section by default,
+		"for structs - not included by default
+		let l:IncludePrivate = BoolNot(a:IsStruct)
+	:endif
+	:if l:IncludePrivate
+		:call add(l:lines, "private:")
+		:call IdentBlock(l:private_lines, 1)
+		:call extend(l:lines, l:private_lines)
+	:endif
 	:call add(l:lines, "};")
 	return l:lines
 :endfunction
@@ -335,7 +427,7 @@
 	let l:class_lines = GetLines_CppClass_General(l:definition_lines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove)
 	:if a:IsDefinition
 		:call append(a:LineNumber, l:definition_lines)
-	else
+	:else
 		:call append(a:LineNumber, l:class_lines)
 	:endif
 :endfunction

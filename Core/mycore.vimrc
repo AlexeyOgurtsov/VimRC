@@ -3,6 +3,13 @@
 :set nowrap
 :set number
 
+:function! BoolNot(Val)
+	:if a:Val
+		return 0
+	:else
+		return 1
+	:endif
+:endfunction
 "string util heler functions for text
 "Appends a line to list if it's not empty
 "
