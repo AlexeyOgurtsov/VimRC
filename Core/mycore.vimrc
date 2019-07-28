@@ -29,3 +29,20 @@
 		:call extend(a:Lines, a:LinesToAdd)
 	:endif
 :endfunction
+:function! IdentLine(Line, Num)
+	let l:result_line = ""
+	let l:i = 0
+	:while l:i < a:Num
+		let l:result_line = l:result_line . "\t"
+		let l:i = l:i + 1
+	:endwhile
+	let l:result_line = l:result_line . a:Line
+	return l:result_line
+:endfunction
+:function! IdentBlock(Lines, Num)
+	let l:i = 0
+	:while l:i < len(a:Lines)
+		let a:Lines[l:i] = IdentLine(a:Lines[l:i], a:Num)
+		let l:i = l:i + 1
+	:endwhile
+:endfunction

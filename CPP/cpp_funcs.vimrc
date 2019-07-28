@@ -66,8 +66,12 @@
 	let l:line = l:line . ">"
 	return l:line
 :endfunction
-"Function class prefix string
-" TODO
+"Function member class prefix string
+" WARNING! DOES include ::
+:function! GetCppClassMemberPrefix(ClassName, TemplParams)
+	let l:IsWithClass = 0
+	return a:ClassName . GetTemplParamsString(a:TemplParams, l:IsWithClass) . "::"
+:endfunction
 "*** Function declaration
 "* Declaration of the following form:
 "* {virtual} ReturnType FunctionName(ContentString)
@@ -75,11 +79,19 @@
 :function! GetLine_CppFuncDecl_General(Name, ContentString, ReturnType, OptionString)
 	let l:declaration_string = ""
 	"Virtual if necessary"
-	:if a:OptionString ~= "Virt"
-		l:declaration_string = l:declaration_string . "virtual "	
+	:if a:OptionString =~ "Virt"
+		let l:declaration_string = l:declaration_string . "virtual "	
 	:endif
 	"Forming result string
 	let l:declaration_string = l:declaration_string . a:ReturnType.' '.a:Name.'('.a:ContentString.')'
+	:if a:OptionString =~ "Def"
+		let l:declaration_string = l:declaration_string . " =default"	
+	:endif
+	:if a:OptionString =~ "Delete"
+		let l:declaration_string = l:declaration_string . " =delete"	
+	:endif
+	echo "DEBUG: GetLine_CppFuncDecl_General: OptionString=". a:OptionString
+	echo "DEBUG: GetLine_CppFuncDecl_General: declaration_string=". l:declaration_string
 	return l:declaration_string
 :endfunction
 
@@ -91,10 +103,12 @@
 :endfunction
 "*** Function definition
 "*** Function's both declaration and definition
-:function! GetLines_CppFunc(OutDefinition, Name, ClassName, TemplParams, ReturnType, OptionString)
-	let l:lines = []
-"TODO
-	return l:lines
+"*** WARNING! Lines are NOT idented
+:function! GetLines_CppFunc(OutDefinition, Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
+	let l:decl_lines = []
+	:call add(l:decl_lines, GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString) . ';')
+	"TODO: Definition
+	return l:decl_lines
 :endfunction
 "*
 "*** Class/Struct definition
@@ -226,14 +240,15 @@
 	"Virtual
 	let l:IsVirtualDtor = (a:OptionString =~ "VirtDtor") || (a:OptionString =~ "I")
 	"Default/Delete
-	let l:IsDef = 1
-	let l:IsDeleted = 0
+	let l:IsDef = 1 "TODO
+	let l:IsDeleted = 0 "TODO
 	"Forming result
 	let l:PublicDeclaration = []
 		let l:definition = []
-		let l:FunctionName = "" "As we have destructor, function name is empty
+		let l:FunctionName = '~' .  a:ClassName "As we have destructor, function name is the same as class + ~
 		let l:FunctionReturnType = "" "As we have destructor, function return type is empty
 		let l:FuncOptions = ""
+		let l:ContentString = ""
 		:if l:IsVirtualDtor
 			let l:FuncOptions = l:FuncOptions . ";virt"
 		:endif
@@ -243,7 +258,7 @@
 		:if l:IsDeleted
 			let l:FuncOptions = l:FuncOptions . ";Delete"
 		:endif
-		let l:decl = GetLines_CppFunc(l:definition, l:FunctionName, a:ClassName, a:TemplParams, l:FunctionReturnType, l:FuncOptions)
+		let l:decl = GetLines_CppFunc(l:definition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
 		"TODO: Why we extend public always? How about private part?
 		:call extend(l:PublicDeclaration, l:decl)
 		:call extend(a:OutPrivateDeclaration, l:definition)
@@ -290,13 +305,16 @@
 	"Header
 	:call extend(l:lines, GetLines_CppClassHeader_General(a:Name, a:TemplParams, a:IsStruct, a:OptionString))
 	:call add(l:lines, "{")
-	:call extend(l:lines, a:ExtraPrivateLinesAbove)
+	let l:ExtraPrivateLinesAbove_Idented = deepcopy(a:ExtraPrivateLinesAbove)
+	:call IdentBlock(l:ExtraPrivateLinesAbove_Idented, 1)
+	:call extend(l:lines, l:ExtraPrivateLinesAbove_Idented)
 	"Public section
 	:call add(l:lines, "public:")
 	:let l:public_lines = []
 	:call Extend_WithBlank(l:public_lines, l:destructor_public)
 	:call Extend_WithBlank(l:public_lines, l:default_ctor_public)
 	:call Extend_WithBlank(l:public_lines, l:copy_move_public)
+	:call IdentBlock(l:public_lines, 1)
 	:call extend(l:lines, l:public_lines)
 "TODO: append comparison/equality operators
 	:call add(l:lines, "")
@@ -306,6 +324,7 @@
 	:call Extend_WithBlank(l:private_lines, l:destructor_priv)
 	:call Extend_WithBlank(l:private_lines, l:default_ctor_priv)
 	:call Extend_WithBlank(l:private_lines, l:copy_move_priv)
+	:call IdentBlock(l:private_lines, 1)
 	:call extend(l:lines, l:private_lines)
 	:call add(l:lines, "};")
 	return l:lines
