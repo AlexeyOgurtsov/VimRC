@@ -78,6 +78,14 @@
 	let l:IsWithClass = 0
 	return a:ClassName . GetTemplParamsString(a:TemplParams, l:IsWithClass) . "::"
 :endfunction
+"Generates string of form Name(ContentString) [const]
+:function! GetLine_CppFunc_NameArgs_AndSpecs(Name, ContentString, OptionString)
+	let l:res_s = a:Name.'('.a:ContentString.')'
+	:if (a:OptionString =~ "Const;")
+		let l:res_s = l:res_s . " const"
+	:endif
+	return l:res_s
+:endfunction
 "*** Function declaration
 "* Declaration of the following form:
 "* {virtual} ReturnType FunctionName(ContentString)
@@ -89,12 +97,16 @@
 		let l:declaration_string = l:declaration_string . "virtual "	
 	:endif
 	"Forming result string
-	let l:declaration_string = l:declaration_string . a:ReturnType.' '.a:Name.'('.a:ContentString.')'
+	let l:declaration_string = l:declaration_string . a:ReturnType.' '. GetLine_CppFunc_NameArgs_AndSpecs(a:Name, a:ContentString, a:OptionString)
 	:if a:OptionString =~ "Def;"
 		let l:declaration_string = l:declaration_string . " =default"	
 	:endif
 	:if a:OptionString =~ "Delete;"
 		let l:declaration_string = l:declaration_string . " =delete"	
+	:endif
+	"Forming prefix
+	:if (a:OptionString =~ "Over;")
+		let l:declaration_string = l:declaration_string . " override"
 	:endif
 	echo "DEBUG: GetLine_CppFuncDecl_General: OptionString=". a:OptionString
 	echo "DEBUG: GetLine_CppFuncDecl_General: declaration_string=". l:declaration_string
@@ -103,7 +115,8 @@
 
 "* Appends function declaration with ; included at the end
 :function! CppFuncDecl_General(LineNumber, Name, ContentString, ReturnType, OptionString)
-	let l:declaration_string = GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString)
+	let l:IsImpl = 1
+	let l:declaration_string = GetLine_CppFuncDecl_General(l:IsImpl, a:Name, a:ContentString, a:ReturnType, a:OptionString)
 	let l:formatted_decl_line = l:declaration_string.';'
 	:call append(a:LineNumber, l:formatted_decl_line)
 :endfunction
@@ -125,6 +138,11 @@
 	:call add(l:Lines, "}")
 	return l:Lines
 :endfunction
+"*** Returns content string updated for implementing
+:function! GetFuncImplContentString(DeclContentString)
+	"TODO: Insert const for types
+	return a:DeclContentString
+:endfunction 
 "*** Function implementation header
 :function! GetLines_CppFuncImplHeader(Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
 	let l:Lines = []
@@ -135,7 +153,8 @@
 	:else
 		let l:FuncHeader = ""
 	:endif
-	let l:FuncHeader =  l:FuncHeader . GetCppClassMemberPrefix(a:ClassName, a:TemplParams) . a:Name . "(" . a:ContentString . ")"
+	let l:ImplContent = GetFuncImplContentString(a:ContentString)
+	let l:FuncHeader =  l:FuncHeader.GetCppClassMemberPrefix(a:ClassName, a:TemplParams).GetLine_CppFunc_NameArgs_AndSpecs(a:Name, l:ImplContent, a:OptionString)
 	"Form up result
 	:if len(a:TemplParams) > 0
 		:call add(l:Lines, l:TemplHeader)
@@ -166,7 +185,11 @@
 	:else
 		"Here we should provide body inside declaration
 		:if l:GenImpl
-			:call add(l:decl_lines, l:header_line)
+			let l:ImplContent = GetFuncImplContentString(a:ContentString)
+			"function header line inside implementation 
+			"(inside .cpp file or inlined)
+			let l:header_line_impl = GetLine_CppFuncDecl_General(a:Name, l:ImplContent, a:ReturnType, a:OptionString)
+			:call add(l:decl_lines, l:header_line_impl)
 			"Inlining body
 			:call extend(l:decl_lines, l:func_body)
 		:endif
