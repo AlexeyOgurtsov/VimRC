@@ -159,6 +159,10 @@
 :function! GetTypeString_RefToConst(TypeName)
 	return "const " . a:TypeName . "&"
 :endfunction
+"*** Type string of form "Type&"
+:function! GetTypeString_Ref(TypeName)
+	return a:TypeName . "&"
+:endfunction
 "*** Argument string of form "Type&& Name"
 :function! GetArgumentString_RValueRef(TypeName, ArgName)
 	return GetTypeString_RValueRef(a:TypeName) . " " . a:ArgName
@@ -454,9 +458,75 @@
 :endfunction
 "Operation for copying or moving (constructor or assignment)
 :function! GetLines_CopyMove_CppFunc(IsMove, IsAssignment, OutDefinition, ClassName, TemplParams, OptionString)
-	let l:public_lines = []
-	"TODO
-	return l:public_lines
+	"Default/Delete
+	let l:IsDefBoth = (a:OptionString !~ "Cust;") && (a:OptionString !~ "CustCpMov;") && (a:OptionString !~ "Ptr;")
+	:if a:IsMove
+		"Move"
+		let l:IsDef = l:IsDefBoth || (a:OptionString =~ "CustMov;")
+	:else
+		"Copy"
+		let l:IsDef = l:IsDefBoth || (a:OptionString =~ "CustCp;")
+	:endif
+	let l:ForbidBoth = (a:OptionString =~ "ForbidCpMov;")
+	:if a:IsMove
+		"Move"
+		let l:IsDeleted = l:ForbidBoth || (a:OptionString =~ "ForbidMov;")
+	:else
+		"Copy"
+		let l:IsDeleted = l:ForbidBoth || (a:OptionString =~ "ForbidCp;")
+	:endif
+	let l:ShouldInlineBoth = (a:OptionString =~ "Inline;") || (a:OptionString =~ "InlineCpMov;")
+	:if a:IsMove
+		"Move"
+		let l:ShouldInline = l:ShouldInlineBoth || (a:OptionString =~ "InlineMov;")
+	:else
+		"Copy"
+		let l:ShouldInline = l:ShouldInlineBoth || (a:OptionString =~ "InlineCp;")
+	:endif
+	let l:NoImplBoth = (a:OptionString =~ "NoImpl;") || (a:OptionString =~ "NoImplCpMov;")
+	:if a:IsMove
+		"Move"
+		let l:NoImpl = l:NoImplBoth || (a:OptionString =~ "NoImplMov;")
+	:else
+		"Copy"
+		let l:NoImpl = l:NoImplBoth || (a:OptionString =~ "NoImplCp;")
+	:endif
+	"Forming result
+	let l:PublicDeclaration = []
+		:if a:IsAssignment
+			"Assignment"
+			let l:FunctionName = "operator=" "As we have operator=
+			let l:FunctionReturnType = GetTypeString_Ref(a:ClassName) "As we have operator=
+		:else
+			"Ctor"
+			let l:FunctionName = a:ClassName "As we have ctor, function name is the same as class
+			let l:FunctionReturnType = "" "As we have ctor, function return type is empty
+		:endif
+		:lockvar l:FunctionName
+		:lockvar l:FunctionReturnType
+
+		let l:ContentString = GetFuncImplContentString_CopyMove(a:IsMove, a:ClassName, a:TemplParams, a:OptionString)
+		:lockvar l:ContentString
+
+		"Forming up func options"
+		let l:FuncOptions = ""
+		:if l:IsDef
+			let l:FuncOptions = l:FuncOptions . "Def;"
+		:endif
+		:if l:IsDeleted
+			let l:FuncOptions = l:FuncOptions . "Delete;"
+		:endif
+		:if l:ShouldInline
+			let l:FuncOptions = l:FuncOptions . "Inline;"
+		:endif
+		:if l:NoImpl
+			let l:FuncOptions = l:FuncOptions . "NoImpl;"
+		:endif
+
+		let l:decl = GetLines_CppFunc(a:OutDefinition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
+		"TODO: Why we extend public always? How about private part?
+		:call extend(l:PublicDeclaration, l:decl)
+	return l:PublicDeclaration
 :endfunction
 
 "Adds both ctor and assignment
