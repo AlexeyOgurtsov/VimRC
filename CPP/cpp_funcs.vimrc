@@ -96,8 +96,12 @@
 	:if a:OptionString =~ "Virt;"
 		let l:declaration_string = l:declaration_string . "virtual "	
 	:endif
-	"Forming result string
-	let l:declaration_string = l:declaration_string . a:ReturnType.' '. GetLine_CppFunc_NameArgs_AndSpecs(a:Name, a:ContentString, a:OptionString)
+	"" Return type
+	let l:declaration_string = l:declaration_string . a:ReturnType
+	:if len(a:ReturnType) > 0
+		let l:declaration_string = l:declaration_string . " "	
+	:endif
+	let l:declaration_string = l:declaration_string. GetLine_CppFunc_NameArgs_AndSpecs(a:Name, a:ContentString, a:OptionString)
 	:if a:OptionString =~ "Def;"
 		let l:declaration_string = l:declaration_string . " =default"	
 	:endif
@@ -320,13 +324,16 @@
 	let l:IsDef = (a:OptionString !~ "Cust;") && (a:OptionString !~ "CustDtor;") && (a:OptionString !~ "Ptr;")
 	let l:IsDeleted = 0 "TODO
 	let l:ShouldInline = (a:OptionString =~ "Inline;") || (a:OptionString =~ "InlineDtor;")
-	let l:NoImpl = (a:OptionString =~ "NoImpl;")
+	let l:NoImpl = (a:OptionString =~ "NoImpl;") || (a:OptionString =~ "NoImplDtor;")
 	"Forming result
 	let l:PublicDeclaration = []
 		let l:FunctionName = '~' .  a:ClassName "As we have destructor, function name is the same as class + ~
+		:lockvar l:FunctionName
 		let l:FunctionReturnType = "" "As we have destructor, function return type is empty
+		:lockvar l:FunctionReturnType
 		let l:FuncOptions = ""
 		let l:ContentString = ""
+		:lockvar l:ContentString
 		:if l:IsVirtualDtor
 			let l:FuncOptions = l:FuncOptions . "Virt;"
 		:endif
@@ -365,14 +372,51 @@
  	let l:decl_lines = GetLines_CppDestructorFunc(a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString)
 	return l:decl_lines
 :endfunction
+"* Add default ctor function (based on options)
+:function! GetLines_CppDefaultCtorFunc(OutDefinition, ClassName, TemplParams, OptionString)
+	"Default/Delete
+	let l:IsDef = (a:OptionString !~ "Cust;") && (a:OptionString !~ "CustDefCtor;") && (a:OptionString !~ "Ptr;")
+	let l:IsDeleted = (a:OptionString =~ "DeleteDefCtor;")
+	let l:ShouldInline = (a:OptionString =~ "Inline;") || (a:OptionString =~ "InlineDefCtor;")
+	let l:NoImpl = (a:OptionString =~ "NoImpl;") || (a:OptionString =~ "NoImplDefCtor;")
+	"Forming result
+	let l:PublicDeclaration = []
+		let l:FunctionName = a:ClassName "As we have ctor, function name is the same as class
+		:lockvar l:FunctionName
+		let l:FunctionReturnType = "" "As we have ctor, function return type is empty
+		:lockvar l:FunctionReturnType
+		let l:FuncOptions = ""
+		let l:ContentString = ""
+		:lockvar l:ContentString
+		:if l:IsDef
+			let l:FuncOptions = l:FuncOptions . "Def;"
+		:endif
+		:if l:IsDeleted
+			let l:FuncOptions = l:FuncOptions . "Delete;"
+		:endif
+		:if l:ShouldInline
+			let l:FuncOptions = l:FuncOptions . "Inline;"
+		:endif
+		:if l:NoImpl
+			let l:FuncOptions = l:FuncOptions . "NoImpl;"
+		:endif
+		let l:decl = GetLines_CppFunc(a:OutDefinition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
+		"TODO: Why we extend public always? How about private part?
+		:call extend(l:PublicDeclaration, l:decl)
+	return l:PublicDeclaration
+:endfunction
 "* Declare default ctor(s) if necessary (based on options)
 "* Returns: 
 "*	public declaration part
 "*	OutDefinition             -     definition (into .cpp file)
 "*	OutPrivateDeclaration     -     private declaration part
 :function! GetLines_DefaultCtor_General(OutDefinition, OutPrivateDeclaration, ClassName, TemplParams, OptionString)
-	let l:PublicDeclaration = []
-	return l:PublicDeclaration
+	let l:ShouldGenerate = (a:OptionString !~ "NoDefCtor;")
+	:if ! l:ShouldGenerate
+		return []
+	:endif 
+ 	let l:decl_lines = GetLines_CppDefaultCtorFunc(a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString)
+	return l:decl_lines
 :endfunction
 "* Declare copy/move operations if necessary (based on options)
 "* Returns: 
@@ -396,7 +440,7 @@
 	"Copy/Move operations
  	let l:copy_move_definition = []
 	let l:copy_move_priv = []
-	let l:copy_move_public = GetLines_DefaultCtor_General(l:copy_move_definition, l:copy_move_priv, a:Name, a:TemplParams, a:OptionString)
+	let l:copy_move_public = GetLines_CopyMoveOperations_General(l:copy_move_definition, l:copy_move_priv, a:Name, a:TemplParams, a:OptionString)
 	"Definition (.cpp)
 	:call Extend_WithBlank(a:OutDefinition, l:destructor_definition) 
 	:call Extend_WithBlank(a:OutDefinition, l:default_ctor_definition) 
