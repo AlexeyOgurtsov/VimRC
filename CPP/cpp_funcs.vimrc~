@@ -821,6 +821,46 @@
 	endif
 :endfunction
 
+:function! AddCode_CppIncludeAt_General(LineNumber, Filename, IsSystem)
+	let l = GetLine_CppIncludeAt_General(a:Filename, a:IsSystem)
+	:call append(a:LineNumber, l)
+:endfunction 
+:function! CmdFunc_Inc(...)
+	let args = a:000
+	let n = len(args)
+
+	if n < 1
+		echoerr "Filename to include must be specified"
+	else
+		if n >= 2
+			let IsSystem = args[1]
+		else
+			let IsSystem = 0
+		endif
+
+		"Here ok, at least one argument specified
+		let Name = args[0]
+
+		"Find pragma line index (we should include below it always!)
+		let pragma_line = search('#pragma')
+		let buffer_line_count = line('$')
+
+		"We must append blank line if pragme line is the last,
+		"otherwise append will fail
+		if pragma_line >= buffer_line_count
+			:call append(pragma_line, "")
+		endif
+
+		let insert_line = pragma_line + 1
+
+		:call AddCode_CppIncludeAt_General(insert_line, Name, IsSystem)
+	endif
+:endfunction
+
+"Include:
+"Args: Name (with or without .h) [IsSystem (0/1)]
+:command! -nargs=* Inc :call CmdFunc_Inc(<f-args>)
+
 "Args: Name [OptionsString]
 :command! -nargs=* Stru :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
 
