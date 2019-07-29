@@ -684,37 +684,44 @@
 	"TODO Cursor jumping
 :endfunction
 " Adds code of cpp struct with default options
-:function! AddCode_CppClass_GeneralStructDefault(Name, TemplParams, OptionString, ExtraPrivateLinesAbove)
+:function! AddCode_CppClass_GeneralDefault(IsStruct, Name, TemplParams, OptionString, ExtraPrivateLinesAbove)
 	let l:Opts = a:OptionString
-	let l:Opts = l:Opts . "Inline;"
-	let l:Opts = l:Opts . "CustDefCtor;"
-	:call AddCode_CppClass_General(a:Name, a:TemplParams, 1, l:Opts, a:ExtraPrivateLinesAbove)
+	if a:IsStruct
+		let l:Opts = l:Opts . "Inline;"
+		let l:Opts = l:Opts . "CustDefCtor;"
+	endif
+	:call AddCode_CppClass_General(a:Name, a:TemplParams, a:IsStruct, l:Opts, a:ExtraPrivateLinesAbove)
 :endfunction
 
-:function! AddCode_CppClass_TemplStructDefault(StructName, TemplParamsDictionary, Ops, ExtraPrivateLinesAbove)
-	:call AddCode_CppClass_GeneralStructDefault(a:StructName, a:TemplParamsDictionary, a:Ops, a:ExtraPrivateLinesAbove)
+:function! AddCode_CppClass_TemplDefault(IsStruct, StructName, TemplParamsDictionary, Ops, ExtraPrivateLinesAbove)
+	:call AddCode_CppClass_GeneralDefault(a:IsStruct, a:StructName, a:TemplParamsDictionary, a:Ops, a:ExtraPrivateLinesAbove)
 :endfunction
 
-:function! AddCode_CppClass_TemplStructDefault_Simple(StructName, TemplParamsDictionary, Ops)
-	:call AddCode_CppClass_TemplStructDefault(a:StructName, a:TemplParamsDictionary, a:Ops, [])
+:function! AddCode_CppClass_TemplDefault_Simple(IsStruct, StructName, TemplParamsDictionary, Ops)
+	:call AddCode_CppClass_TemplDefault(a:IsStruct, a:StructName, a:TemplParamsDictionary, a:Ops, [])
 :endfunction
 
 " Adds code of cpp struct with default options and no template arguments
-:function! AddCode_CppClass_StructDefault(Name, OptionString, ExtraPrivateLinesAbove)
-	:call AddCode_CppClass_GeneralStructDefault(a:Name, {}, a:OptionString, a:ExtraPrivateLinesAbove)
+:function! AddCode_CppClass_Default(IsStruct, Name, OptionString, ExtraPrivateLinesAbove)
+	:call AddCode_CppClass_GeneralDefault(a:IsStruct, a:Name, {}, a:OptionString, a:ExtraPrivateLinesAbove)
 :endfunction
 " Adds code of cpp struct with default options and no template arguments
-:function! AddCode_CppClass_StructDefault_Simple(Name, OptionString)
-	:call AddCode_CppClass_StructDefault(a:Name, a:OptionString, [])
+:function! AddCode_CppClass_Default_Simple(IsStruct, Name, OptionString)
+	:call AddCode_CppClass_Default(a:IsStruct, a:Name, a:OptionString, [])
 :endfunction
 
-:function! CmdFunc_AddCode_CppClass_StructDefault_Simple(...)
+:function! CmdFunc_AddCode_CppClass_Default_Simple(...)
 	let args = a:000
 	lockvar args
-	let n = len(a:000)
+	let n = len(a:000) - 1
 	lockvar n
 
 	echo "Command with ".n." args called"
+
+	if len(a:000) > 0
+		let IsStruct = a:000[0]
+		lockvar IsStruct
+	endif
 
 	if n > 2 
 		echoerr "Too many arguments for the command"
@@ -724,17 +731,17 @@
 		return
 	else
 		"here we have 1 or 2 arguments
-		let StructName = args[0]
+		let StructName = args[1]
 		lockvar StructName
 		if n >= 2
-			let Ops = args[1]
+			let Ops = args[2]
 		else
 			let Ops = ""
 		endif
 		lockvar Ops
 
-		"Performing struct insertion command
-		:call AddCode_CppClass_StructDefault_Simple(StructName, Ops)
+		"Performing struct/class insertion command
+		:call AddCode_CppClass_Default_Simple(IsStruct, StructName, Ops)
 	endif
 :endfunction
 
@@ -746,13 +753,18 @@
 	return res_dict
 :endfunction
 
-:function! CmdFunc_AddCode_CppClass_TemplStructDefault_Simple(...)
+:function! CmdFunc_AddCode_CppClass_TemplDefault_Simple(...)
 	let args = a:000
 	lockvar args
-	let n = len(a:000)
+	let n = len(a:000) - 1
 	lockvar n
 
 	echo "Command with ".n." args called"
+
+	if len(a:000) > 0
+		let IsStruct = a:000[0]
+		lockvar IsStruct
+	endif
 
 	if n > 3 
 		echoerr "Too many arguments for the command"
@@ -762,9 +774,9 @@
 		return
 	else
 		"here we have 2 or 3 arguments
-		let StructName = args[0]
+		let StructName = args[1]
 		lockvar StructName
-		let TemplParams = eval(args[1])
+		let TemplParams = eval(args[2])
 		:if type(TemplParams) ==  v:t_dict
 			let TemplParamsDictionary = TemplParams
 		:elseif type(TemplParams) ==  v:t_list
@@ -775,22 +787,28 @@
 		:endif
 
 		if n >= 3
-			let Ops = args[2]
+			let Ops = args[3]
 		else
 			let Ops = ""
 		endif
 		lockvar Ops
 
 		"Performing struct insertion command
-		:call AddCode_CppClass_TemplStructDefault_Simple(StructName, TemplParamsDictionary, Ops)
+		:call AddCode_CppClass_TemplDefault_Simple(IsStruct, StructName, TemplParamsDictionary, Ops)
 	endif
 :endfunction
 
 "Args: Name [OptionsString]
-:command! -nargs=* Struct :call CmdFunc_AddCode_CppClass_StructDefault_Simple(<f-args>)
+:command! -nargs=* Struct :call CmdFunc_AddCode_CppClass_Default_Simple(1, <f-args>)
 
 "Args: Name [template_argument list or Dictionary] [OptionsString]
-:command! -nargs=* TStruct :call CmdFunc_AddCode_CppClass_TemplStructDefault_Simple(<f-args>)
+:command! -nargs=* TStruct :call CmdFunc_AddCode_CppClass_TemplDefault_Simple(1, <f-args>)
+
+"Args: Name [OptionsString]
+:command! -nargs=* Class :call CmdFunc_AddCode_CppClass_Default_Simple(0, <f-args>)
+
+"Args: Name [template_argument list or Dictionary] [OptionsString]
+:command! -nargs=* TClass :call CmdFunc_AddCode_CppClass_TemplDefault_Simple(0, <f-args>)
 
 "Helper function: Add Cpp class both definition and declaration
 "with default name
