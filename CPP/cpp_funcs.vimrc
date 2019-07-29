@@ -112,8 +112,8 @@
 	:if (a:OptionString =~ "Over;")
 		let l:declaration_string = l:declaration_string . " override"
 	:endif
-	echo "DEBUG: GetLine_CppFuncDecl_General: OptionString=". a:OptionString
-	echo "DEBUG: GetLine_CppFuncDecl_General: declaration_string=". l:declaration_string
+	:call DebugEcho("DEBUG: GetLine_CppFuncDecl_General: OptionString=". a:OptionString)
+	:call DebugEcho("DEBUG: GetLine_CppFuncDecl_General: declaration_string=". l:declaration_string)
 	return l:declaration_string
 :endfunction
 
@@ -214,12 +214,12 @@
 	let l:ReturnStmt = GetLines_DefaultReturnStmt(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
 	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, a:ContentString, a:ReturnType, a:OptionString)
 	let l:ShouldInline = (a:OptionString =~ "Inline;") || (len(a:TemplParams) > 0)
-	echo "Debug: GetLines_CppFunc: ShouldInline: ".l:ShouldInline
+	:call DebugEcho("Debug: GetLines_CppFunc: ShouldInline: ".l:ShouldInline)
 	let l:ShouldNotInline = BoolNot(l:ShouldInline)
 	:let l:GenImpl = (a:OptionString !~ "NoImpl;") && (a:OptionString !~ "Def;")
 	:lockvar l:GenImpl
 	"Debug
-	echo "Debug: GetLines_CppFunc: GenImpl: ".l:GenImpl
+	:call DebugEcho("Debug: GetLines_CppFunc: GenImpl: ".l:GenImpl)
 	:if BoolNot(l:GenImpl) || l:ShouldNotInline
 		"Non-inlining or should not gen impl,
 		"then we should not provide the body inside declaration
@@ -234,13 +234,13 @@
 	:else
 		"Here we should provide body inside declaration
 		"Debug
-		echo "Debug: GetLine_CppFunc: here we should provide body inside decl"
+		:call DebugEcho("Debug: GetLine_CppFunc: here we should provide body inside decl")
 		:if l:GenImpl
 			let l:ImplContent = GetFuncImplContentString(a:ContentString)
 			"function header line inside implementation 
 			"(inside .cpp file or inlined)
 			let l:header_line_impl = GetLine_CppFuncDecl_General(a:Name, l:ImplContent, a:ReturnType, a:OptionString)
-		echo "Debug: GetLine_CppFunc: header line impl: ".l:header_line_impl
+		:call DebugEcho("Debug: GetLine_CppFunc: header line impl: ".l:header_line_impl)
 			:call add(l:decl_lines, l:header_line_impl)
 			"Inlining body
 			:call extend(l:decl_lines, l:func_body)
@@ -633,6 +633,23 @@
 	:call extend(l:lines, l:public_lines)
 "TODO: append comparison/equality operators
 	:call add(l:lines, "")
+	"Protected section
+	:let l:protected_lines = []
+	"Should we include protected section
+	:if (len(l:protected_lines) > 0) || (a:OptionString =~ "ForceProtected;")
+		"We always should include protected section if at least one
+		"protected line is generated
+		let l:IncludeProtected = 1;
+	:else
+		"For classes we include protected section by default,
+		"for structs - not included by default
+		let l:IncludeProtected = BoolNot(a:IsStruct)
+	:endif
+	:if l:IncludeProtected
+		:call add(l:lines, "protected:")
+		:call IdentBlock(l:protected_lines, 1)
+		:call extend(l:lines, l:protected_lines)
+	:endif
 	"Private section
 	:let l:private_lines = []
 	:call Extend_WithBlank(l:private_lines, l:destructor_priv)
@@ -716,7 +733,7 @@
 	let n = len(a:000) - 2
 	lockvar n
 
-	echo "Command with ".n." args called"
+	:call DebugEcho("Command with ".n." args called")
 
 	if len(a:000) >= 2
 		let IsStruct = a:000[0]
@@ -805,10 +822,10 @@
 :endfunction
 
 "Args: Name [OptionsString]
-:command! -nargs=* Struct :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
+:command! -nargs=* Stru :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
 
 "Args: Name [template_argument list or Dictionary] [OptionsString]
-:command! -nargs=* TStruct :call CmdFunc_AddCode_CppClass_TemplDefault(1, [], <f-args>)
+:command! -nargs=* TStru :call CmdFunc_AddCode_CppClass_TemplDefault(1, [], <f-args>)
 
 "Args: Name [OptionsString]
 :command! -nargs=* Class :call CmdFunc_AddCode_CppClass_Default(0, [], <f-args>)

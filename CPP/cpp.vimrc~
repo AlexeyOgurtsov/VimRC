@@ -1,19 +1,4 @@
 "Main vimrc file for working with C++
 :source ../Core/mycore.vimrc
-:source cpp_funcs.vimrc
-:source cpp_keys.vimrc
-"*** #Include directive
-"Include header:
-"-Appends .h automatically
-:function! CppIncludeAt(LineNumber, Filename)
-	var l:str = "#include \"".Filename."\"";
-	:call Append(LineNumber, l:str);
-:endfunction
-"Include header with the given header base path
-"Include System
-"*** Statement
-"If statement
-"Switch statement
-"*** Function
-"*** Class/Struct definition
-"*** Class/Struct template definition
+:source D:/!DV_SCRIPT/VIM/CONFIG/CPP/cpp_funcs.vimrc
+:source D:/!DV_SCRIPT/VIM/CONFIG/CPP/cpp_keys.vimrc

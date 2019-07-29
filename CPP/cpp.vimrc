@@ -1,4 +1,4 @@
 "Main vimrc file for working with C++
-:source ../Core/mycore.vimrc
-:source cpp_funcs.vimrc
-:source cpp_keys.vimrc
+:source D:/!DV_SCRIPT/VIM/CONFIG/Core/mycore.vimrc
+:source D:/!DV_SCRIPT/VIM/CONFIG/CPP/cpp_funcs.vimrc
+:source D:/!DV_SCRIPT/VIM/CONFIG/CPP/cpp_keys.vimrc

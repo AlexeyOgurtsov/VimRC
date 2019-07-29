@@ -127,3 +127,11 @@
 	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines)
 	"TODO: Add private lines
 :endfunction
+
+"******* Debugging
+:let g:mycore_echo_debug = 0
+:function! DebugEcho(Msg)
+	if g:mycore_echo_debug
+		echo a:Msg
+	endif
+:endfunction

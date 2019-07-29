@@ -1,2 +1,2 @@
 "Main rc file for C# language
-:source ../Core/mycore.vimrc
+:source D:/!DV_SCRIPT/VIM/CONFIG/Core/mycore.vimrc

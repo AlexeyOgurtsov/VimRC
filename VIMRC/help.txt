@@ -1,0 +1,2 @@
+_vimrc - substitute with this file the main RC file,
+configure the CurrVimRC.vimrc instead of the main RC file
