@@ -710,17 +710,20 @@
 	:call AddCode_CppClass_Default(a:IsStruct, a:Name, a:OptionString, [])
 :endfunction
 
-:function! CmdFunc_AddCode_CppClass_Default_Simple(...)
+:function! CmdFunc_AddCode_CppClass_Default(...)
 	let args = a:000
 	lockvar args
-	let n = len(a:000) - 1
+	let n = len(a:000) - 2
 	lockvar n
 
 	echo "Command with ".n." args called"
 
-	if len(a:000) > 0
+	if len(a:000) >= 2
 		let IsStruct = a:000[0]
 		lockvar IsStruct
+
+		let ExtraLinesAbove = a:000[1]
+		lockvar ExtraLinesAbove
 	endif
 
 	if n > 2 
@@ -731,17 +734,17 @@
 		return
 	else
 		"here we have 1 or 2 arguments
-		let StructName = args[1]
+		let StructName = args[2]
 		lockvar StructName
 		if n >= 2
-			let Ops = args[2]
+			let Ops = args[3]
 		else
 			let Ops = ""
 		endif
 		lockvar Ops
 
 		"Performing struct/class insertion command
-		:call AddCode_CppClass_Default_Simple(IsStruct, StructName, Ops)
+		:call AddCode_CppClass_Default(IsStruct, StructName, Ops, ExtraLinesAbove)
 	endif
 :endfunction
 
@@ -753,17 +756,20 @@
 	return res_dict
 :endfunction
 
-:function! CmdFunc_AddCode_CppClass_TemplDefault_Simple(...)
+:function! CmdFunc_AddCode_CppClass_TemplDefault(...)
 	let args = a:000
 	lockvar args
-	let n = len(a:000) - 1
+	let n = len(a:000) - 2
 	lockvar n
 
 	echo "Command with ".n." args called"
 
-	if len(a:000) > 0
+	if len(a:000) >= 2
 		let IsStruct = a:000[0]
 		lockvar IsStruct
+
+		let ExtraLinesAbove = a:000[1]
+		lockvar ExtraLinesAbove
 	endif
 
 	if n > 3 
@@ -774,9 +780,9 @@
 		return
 	else
 		"here we have 2 or 3 arguments
-		let StructName = args[1]
+		let StructName = args[2]
 		lockvar StructName
-		let TemplParams = eval(args[2])
+		let TemplParams = eval(args[3])
 		:if type(TemplParams) ==  v:t_dict
 			let TemplParamsDictionary = TemplParams
 		:elseif type(TemplParams) ==  v:t_list
@@ -787,28 +793,28 @@
 		:endif
 
 		if n >= 3
-			let Ops = args[3]
+			let Ops = args[4]
 		else
 			let Ops = ""
 		endif
 		lockvar Ops
 
 		"Performing struct insertion command
-		:call AddCode_CppClass_TemplDefault_Simple(IsStruct, StructName, TemplParamsDictionary, Ops)
+		:call AddCode_CppClass_TemplDefault(IsStruct, StructName, TemplParamsDictionary, Ops, ExtraLinesAbove)
 	endif
 :endfunction
 
 "Args: Name [OptionsString]
-:command! -nargs=* Struct :call CmdFunc_AddCode_CppClass_Default_Simple(1, <f-args>)
+:command! -nargs=* Struct :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
 
 "Args: Name [template_argument list or Dictionary] [OptionsString]
-:command! -nargs=* TStruct :call CmdFunc_AddCode_CppClass_TemplDefault_Simple(1, <f-args>)
+:command! -nargs=* TStruct :call CmdFunc_AddCode_CppClass_TemplDefault(1, [], <f-args>)
 
 "Args: Name [OptionsString]
-:command! -nargs=* Class :call CmdFunc_AddCode_CppClass_Default_Simple(0, <f-args>)
+:command! -nargs=* Class :call CmdFunc_AddCode_CppClass_Default(0, [], <f-args>)
 
 "Args: Name [template_argument list or Dictionary] [OptionsString]
-:command! -nargs=* TClass :call CmdFunc_AddCode_CppClass_TemplDefault_Simple(0, <f-args>)
+:command! -nargs=* TClass :call CmdFunc_AddCode_CppClass_TemplDefault(0, [], <f-args>)
 
 "Helper function: Add Cpp class both definition and declaration
 "with default name
