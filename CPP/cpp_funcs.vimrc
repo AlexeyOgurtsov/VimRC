@@ -92,6 +92,10 @@
 "* WARNING ; not appended!
 :function! GetLine_CppFuncDecl_General(Name, ContentString, ReturnType, OptionString)
 	let l:declaration_string = ""
+	"Explicit inline specifier if necessary"
+	:if a:OptionString =~ "Inline;"
+		let l:declaration_string = l:declaration_string . "inline "	
+	:endif
 	"Virtual if necessary"
 	:if a:OptionString =~ "Virt;"
 		let l:declaration_string = l:declaration_string . "virtual "	
@@ -147,6 +151,35 @@
 	"TODO: Insert const for types
 	return a:DeclContentString
 :endfunction 
+"*** Type string of form "Type&&"
+:function! GetTypeString_RValueRef(TypeName)
+	return a:TypeName . "&&"
+:endfunction
+"*** Type string of form "const Type&"
+:function! GetTypeString_RefToConst(TypeName)
+	return "const " . a:TypeName . "&"
+:endfunction
+"*** Argument string of form "Type&& Name"
+:function! GetArgumentString_RValueRef(TypeName, ArgName)
+	return GetTypeString_RValueRef(a:TypeName) . " " . a:ArgName
+:endfunction
+"*** Argument string of form "const Type& Name"
+:function! GetArgumentString_RefToConst(TypeName, ArgName)
+	return GetTypeString_RefToConst(a:TypeName) . " " . a:ArgName
+:endfunction
+"*** Content string for copy/move ctor/assignment operators
+:function! GetFuncImplContentString_CopyMove(IsMove, ClassName, TemplParams, OptionString)
+	let l:ArgName = "rhs"
+	:lockvar l:ArgName
+	:if a:IsMove
+		"Move operation
+		let l:s = GetArgumentString_RValueRef(a:ClassName, l:ArgName)
+	:else
+		"Copy operation
+		let l:s = GetArgumentString_RefToConst(a:ClassName, l:ArgName)
+	:endif
+	return l:s
+:endfunction
 "*** Function implementation header
 :function! GetLines_CppFuncImplHeader(Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
 	let l:Lines = []
@@ -174,8 +207,9 @@
 	let l:header_line = GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString)
 	let l:ReturnStmt = GetLines_DefaultReturnStmt(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
 	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, a:ContentString, a:ReturnType, a:OptionString)
+	let l:ShouldNotInline = (a:OptionString !~ "Inline;") && (len(a:TemplParams) == 0)
 	:let l:GenImpl = (a:OptionString !~ "NoImpl;") && (a:OptionString !~ "Def;")
-	:if BoolNot(l:GenImpl) || (a:OptionString !~ "Inline;")
+	:if BoolNot(l:GenImpl) || l:ShouldNotInline
 		"Non-inlining or should not gen impl,
 		"then we should not provide the body inside declaration
 		let l:header_line = l:header_line . ";"
@@ -410,7 +444,7 @@
 "*	public declaration part
 "*	OutDefinition             -     definition (into .cpp file)
 "*	OutPrivateDeclaration     -     private declaration part
-:function! GetLines_DefaultCtor_General(OutDefinition, OutPrivateDeclaration, ClassName, TemplParams, OptionString)
+:function! GetLines_DefaultCtor_General(OutDefinition, OutPrivateDeclaration, IsStruct, ClassName, TemplParams, OptionString)
 	let l:ShouldGenerate = (a:OptionString !~ "NoDefCtor;")
 	:if ! l:ShouldGenerate
 		return []
@@ -418,14 +452,68 @@
  	let l:decl_lines = GetLines_CppDefaultCtorFunc(a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString)
 	return l:decl_lines
 :endfunction
+"Operation for copying or moving (constructor or assignment)
+:function! GetLines_CopyMove_CppFunc(IsMove, IsAssignment, OutDefinition, ClassName, TemplParams, OptionString)
+	let l:public_lines = []
+	"TODO
+	return l:public_lines
+:endfunction
+
+"Adds both ctor and assignment
+:function! GetLines_CopyMove_CtorAndAssign(IsMove, OutDefinition, ClassName, TemplParams, OptionString)
+	let l:public_lines = []
+	"Ctor
+	:call extend(l:public_lines, GetLines_CopyMove_CppFunc(a:IsMove, 0, a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString))
+	"Assignment
+	:call extend(l:public_lines, GetLines_CopyMove_CppFunc(a:IsMove, 1, a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString))
+	return l:public_lines
+:endfunction
+"* Add copy operation function (based on options)
+:function! GetLines_CopyFuncs(OutDefinition, ClassName, TemplParams, OptionString)
+	"TODO
+ 	return GetLines_CopyMove_CtorAndAssign(0, a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString)
+:endfunction
+"* Add move operations function (based on options)
+:function! GetLines_MoveFuncs(OutDefinition, ClassName, TemplParams, OptionString)
+	"TODO
+ 	return GetLines_CopyMove_CtorAndAssign(1, a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString)
+:endfunction
 "* Declare copy/move operations if necessary (based on options)
 "* Returns: 
 "*	public declaration part
 "*	OutDefinition             -     definition (into .cpp file)
 "*	OutPrivateDeclaration     -     private declaration part
-:function! GetLines_CopyMoveOperations_General(OutDefinition, OutPrivateDeclaration, ClassName, TemplParams, OptionString)
-	let l:PublicDeclaration = []
-	return l:PublicDeclaration
+:function! GetLines_CopyMoveOperations_General(OutDefinition, OutPrivateDeclaration, IsStruct, ClassName, TemplParams, OptionString)
+	let l:ForceCpMov = (a:OptionString =~ "ForceCpMov;")
+	let l:ForceCpOnly = (a:OptionString =~ "ForceCp;")
+	let l:ForceMovOnly = (a:OptionString =~ "ForceMov;")
+	let l:ForceAnyOf = l:ForceCpMov || l:ForceCpOnly || l:ForceMovOnly 
+
+	:if a:IsStruct 
+		"Should we generate any at all?
+		let l:ShouldGenerate = l:ForceAnyOf
+	:else
+		" For classes
+		let l:ShouldGenerate = (a:OptionString !~ "NoCpMov;") || l:ForceAnyOf
+	:endif
+	:if ! l:ShouldGenerate
+		return []
+	:endif 
+
+	"Result generation:
+	let l:decl_lines = []
+
+	"Generate Copy
+	:if BoolNot(a:IsStruct) || l:ForceCpMov || l:ForceCpOnly
+		:call extend(l:decl_lines, GetLines_CopyFuncs(a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString))
+	:endif 
+	
+	"Generate Move
+	:if BoolNot(a:IsStruct) || l:ForceCpMov || l:ForceMovOnly
+		:call extend(l:decl_lines, GetLines_MoveFuncs(a:OutDefinition, a:ClassName, a:TemplParams, a:OptionString))
+	:endif
+	
+	return l:decl_lines
 :endfunction
 "* See help above
 :function! GetLines_CppClass_General(OutDefinition, Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove)
@@ -436,11 +524,11 @@
 	"DefaultCtor/ArgumentCtor
  	let l:default_ctor_definition = []
 	let l:default_ctor_priv = []
-	let l:default_ctor_public = GetLines_DefaultCtor_General(l:default_ctor_definition, l:default_ctor_priv, a:Name, a:TemplParams, a:OptionString)
+	let l:default_ctor_public = GetLines_DefaultCtor_General(l:default_ctor_definition, l:default_ctor_priv, a:IsStruct, a:Name, a:TemplParams, a:OptionString)
 	"Copy/Move operations
  	let l:copy_move_definition = []
 	let l:copy_move_priv = []
-	let l:copy_move_public = GetLines_CopyMoveOperations_General(l:copy_move_definition, l:copy_move_priv, a:Name, a:TemplParams, a:OptionString)
+	let l:copy_move_public = GetLines_CopyMoveOperations_General(l:copy_move_definition, l:copy_move_priv, a:IsStruct, a:Name, a:TemplParams, a:OptionString)
 	"Definition (.cpp)
 	:call Extend_WithBlank(a:OutDefinition, l:destructor_definition) 
 	:call Extend_WithBlank(a:OutDefinition, l:default_ctor_definition) 
@@ -515,3 +603,4 @@
 	:call CppClassAt_General(line("."), 1, l:DefaultName, a:TemplParams, a:IsStruct, a:OptionString, l:ExtraPrivateLinesAbove)
 :endfunction
 "*** Enum definition
+"*** Add class variables (with getters, default initialization)
