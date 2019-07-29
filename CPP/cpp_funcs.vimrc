@@ -92,10 +92,6 @@
 "* WARNING ; not appended!
 :function! GetLine_CppFuncDecl_General(Name, ContentString, ReturnType, OptionString)
 	let l:declaration_string = ""
-	"Explicit inline specifier if necessary"
-	:if a:OptionString =~ "Inline;"
-		let l:declaration_string = l:declaration_string . "inline "	
-	:endif
 	"Virtual if necessary"
 	:if a:OptionString =~ "Virt;"
 		let l:declaration_string = l:declaration_string . "virtual "	
@@ -131,8 +127,14 @@
 "*** Calculates default return statemen lines for function
 :function! GetLines_DefaultReturnStmt(Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
 	let l:Lines = []
+
+	"Handling special cases for custom operators first
+	:if (a:Name==#"operator=")
+		return ["return *this;"]
+	:endif
+
 	:if (a:ReturnType != "void") && (a:ReturnType != "")
-		let l:ReturnStmt = "return ReturnType{};"
+		let l:ReturnStmt = "return ".a:ReturnType."{};"
 		:call add(l:Lines, l:ReturnStmt)
 	:endif
 	return l:Lines
@@ -211,8 +213,13 @@
 	let l:header_line = GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString)
 	let l:ReturnStmt = GetLines_DefaultReturnStmt(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
 	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, a:ContentString, a:ReturnType, a:OptionString)
-	let l:ShouldNotInline = (a:OptionString !~ "Inline;") && (len(a:TemplParams) == 0)
+	let l:ShouldInline = (a:OptionString =~ "Inline;") || (len(a:TemplParams) > 0)
+	echo "Debug: GetLines_CppFunc: ShouldInline: ".l:ShouldInline
+	let l:ShouldNotInline = BoolNot(l:ShouldInline)
 	:let l:GenImpl = (a:OptionString !~ "NoImpl;") && (a:OptionString !~ "Def;")
+	:lockvar l:GenImpl
+	"Debug
+	echo "Debug: GetLines_CppFunc: GenImpl: ".l:GenImpl
 	:if BoolNot(l:GenImpl) || l:ShouldNotInline
 		"Non-inlining or should not gen impl,
 		"then we should not provide the body inside declaration
@@ -226,11 +233,14 @@
 		:endif
 	:else
 		"Here we should provide body inside declaration
+		"Debug
+		echo "Debug: GetLine_CppFunc: here we should provide body inside decl"
 		:if l:GenImpl
 			let l:ImplContent = GetFuncImplContentString(a:ContentString)
 			"function header line inside implementation 
 			"(inside .cpp file or inlined)
 			let l:header_line_impl = GetLine_CppFuncDecl_General(a:Name, l:ImplContent, a:ReturnType, a:OptionString)
+		echo "Debug: GetLine_CppFunc: header line impl: ".l:header_line_impl
 			:call add(l:decl_lines, l:header_line_impl)
 			"Inlining body
 			:call extend(l:decl_lines, l:func_body)
@@ -663,6 +673,26 @@
 "helper for adding non-template struct with default options
 :function! CppStructAt(LineNumber, IsDefinition, Name)
 	:call CppClassAt_General(a:LineNumber, a:IsDefinition, a:Name, [], 1, "", [])
+:endfunction
+"General function for adding code of class
+:function! AddCode_CppClass_General(Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove)
+	"Calculate lines"
+	let l:PrivLines = []
+	let l:PublicLines = GetLines_CppClass_General(l:PrivLines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove)
+	"Add code"
+	:call AddCode(l:PublicLines, l:PrivLines, a:OptionString)
+	"TODO Cursor jumping
+:endfunction
+" Adds code of cpp struct with default options
+:function! AddCode_CppClass_GeneralStructDefault(Name, TemplParams, OptionString, ExtraPrivateLinesAbove)
+	let l:Opts = a:OptionString
+	let l:Opts = l:Opts . "Inline;"
+	let l:Opts = l:Opts . "CustDefCtor;"
+	:call AddCode_CppClass_General(a:Name, a:TemplParams, 1, l:Opts, a:ExtraPrivateLinesAbove)
+:endfunction
+" Adds code of cpp struct with default options and no template arguments
+:function! AddCode_CppClass_StructDefault(Name, OptionString, ExtraPrivateLinesAbove)
+	:call AddCode_CppClass_GeneralStructDefault(a:Name, {}, a:OptionString, a:ExtraPrivateLinesAbove)
 :endfunction
 "Helper function: Add Cpp class both definition and declaration
 "with default name

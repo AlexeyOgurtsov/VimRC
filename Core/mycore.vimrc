@@ -53,3 +53,77 @@
 		let l:i = l:i + 1
 	:endwhile
 :endfunction
+
+"function to be used for providing Not-yet-impl statements
+:function! GetLines_NotImplFunc_Default(ClassName, TemplParams, FuncName, Msg, OptionString)
+	let l:lines = []
+	":TODO
+	return l:lines	
+:endfunction
+
+:function! GetLines_NotImplRetFunc_Default(ClassName, TemplParams, FuncName, Msg, RetVal, OptionString)
+	let l:lines = []
+	":TODO
+	return l:lines	
+:endfunction
+
+:function! GetLines_NotImplFuncSevere_Default(ClassName, TemplParams, FuncName, Msg, OptionString)
+	let l:lines = []
+	":TODO
+	return l:lines	
+:endfunction
+
+:function! GetLines_NotImplRetFuncSevere_Default(ClassName, TemplParams, FuncName, Msg, RetVal, OptionString)
+	let l:lines = []
+	":TODO
+	return l:lines	
+:endfunction
+
+:function! MyCore_NotImplFunc(ClassName, TemplParams, FuncName, Msg, OptionString)
+	return GetLines_NotImplFunc_Default(a:ClassName, a:TemplParams, a:FuncName, a:Msg, a:OptionString)
+:endfunction
+:function! MyCore_NotImplRetFunc(ClassName, TemplParams, FuncName, Msg, RetVal, OptionString)
+	return GetLines_NotImplRetFunc_Default(a:ClassName, a:TemplParams, a:FuncName, a:Msg, a:RetVal, a:OptionString)
+:endfunction
+:function! MyCore_NotImplFuncSevere(ClassName, TemplParams, FuncName, Msg, OptionString)
+	return GetLines_NotImplFuncSevere_Default(a:ClassName, a:TemplParams, a:FuncName, a:Msg, a:OptionString)
+:endfunction
+:function! MyCore_NotImplRetFuncSevere(ClassName, TemplParams, FuncName, Msg, RetVal, OptionString)
+	return GetLines_NotImplRetFuncSevere_Default(a:ClassName, a:TemplParams, a:FuncName, a:Msg, a:RetVal, a:OptionString)
+:endfunction
+"Returns a set of lines, representing current NOT_YET_IMPL instruction call
+"IsSevere 1 => hard assert (instead of silent)
+:function! GetLines_NotImpl(IsSevere, ClassName, TemplParams, FuncName, Msg, RetVal, OptionString)
+	let l:lines = []
+	":TODO
+	return l:lines	
+:endfunction
+
+"Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
+"inside namespace, etc.)
+:function! AddIndentedCodeLinesAt(LineNumber, Lines)
+	let l:IndentedLines = deepcopy(a:Lines)
+	"TODO: Indent block if necessary
+	:call append(a:LineNumber, l:IndentedLines)
+:endfunction
+
+"Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
+"inside namespace, etc.)
+:function! AddIndentedCodeLines(Lines)
+	let l:LineNumber = line('.')
+	:call AddIndentedCodeLinesAt(l:LineNumber, a:Lines)
+:endfunction
+
+"Append both declaration and definition 
+" - based on current context (lines, buffer etc.) and options
+" - Automatically should perform identation (for example, when inside namespace
+" etc.)
+" - Does NOT automatically jumps cursor at the end!
+:function! AddCode(PublicLines, PrivateLines, Options)
+	let l:AddPublic = (a:Options !~ "NoPublic;")
+	let l:AddPriv = (a:Options !~ "NoPriv;") 
+	"Adding public code
+	let l:PublicLineNumber = line('.')
+	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines)
+	"TODO: Add private lines
+:endfunction
