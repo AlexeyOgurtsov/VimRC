@@ -690,10 +690,108 @@
 	let l:Opts = l:Opts . "CustDefCtor;"
 	:call AddCode_CppClass_General(a:Name, a:TemplParams, 1, l:Opts, a:ExtraPrivateLinesAbove)
 :endfunction
+
+:function! AddCode_CppClass_TemplStructDefault(StructName, TemplParamsDictionary, Ops, ExtraPrivateLinesAbove)
+	:call AddCode_CppClass_GeneralStructDefault(a:StructName, a:TemplParamsDictionary, a:Ops, a:ExtraPrivateLinesAbove)
+:endfunction
+
+:function! AddCode_CppClass_TemplStructDefault_Simple(StructName, TemplParamsDictionary, Ops)
+	:call AddCode_CppClass_TemplStructDefault(a:StructName, a:TemplParamsDictionary, a:Ops, [])
+:endfunction
+
 " Adds code of cpp struct with default options and no template arguments
 :function! AddCode_CppClass_StructDefault(Name, OptionString, ExtraPrivateLinesAbove)
 	:call AddCode_CppClass_GeneralStructDefault(a:Name, {}, a:OptionString, a:ExtraPrivateLinesAbove)
 :endfunction
+" Adds code of cpp struct with default options and no template arguments
+:function! AddCode_CppClass_StructDefault_Simple(Name, OptionString)
+	:call AddCode_CppClass_StructDefault(a:Name, a:OptionString, [])
+:endfunction
+
+:function! CmdFunc_AddCode_CppClass_StructDefault_Simple(...)
+	let args = a:000
+	lockvar args
+	let n = len(a:000)
+	lockvar n
+
+	echo "Command with ".n." args called"
+
+	if n > 2 
+		echoerr "Too many arguments for the command"
+		return
+	elseif n == 0
+		echoerr "At least one argument (struct name) must be specified for the command"
+		return
+	else
+		"here we have 1 or 2 arguments
+		let StructName = args[0]
+		lockvar StructName
+		if n >= 2
+			let Ops = args[1]
+		else
+			let Ops = ""
+		endif
+		lockvar Ops
+
+		"Performing struct insertion command
+		:call AddCode_CppClass_StructDefault_Simple(StructName, Ops)
+	endif
+:endfunction
+
+:function! TemplParams_ListToDict(InList)
+	let res_dict = {}
+	for ParamName in a:InList
+		let res_dict[ParamName] = "class"
+	endfor
+	return res_dict
+:endfunction
+
+:function! CmdFunc_AddCode_CppClass_TemplStructDefault_Simple(...)
+	let args = a:000
+	lockvar args
+	let n = len(a:000)
+	lockvar n
+
+	echo "Command with ".n." args called"
+
+	if n > 3 
+		echoerr "Too many arguments for the command"
+		return
+	elseif n < 2
+		echoerr "At least two arguments (struct name and template params list or dictinary (name to type (e.g. class))) must be specified for the command"
+		return
+	else
+		"here we have 2 or 3 arguments
+		let StructName = args[0]
+		lockvar StructName
+		let TemplParams = eval(args[1])
+		:if type(TemplParams) ==  v:t_dict
+			let TemplParamsDictionary = TemplParams
+		:elseif type(TemplParams) ==  v:t_list
+			let TemplParamsList = TemplParams
+			let TemplParamsDictionary = TemplParams_ListToDict(TemplParamsList)
+		:else
+			echoerr "Wrong type of template params list (must be either list or dictionary (name to type mapping))"
+		:endif
+
+		if n >= 3
+			let Ops = args[2]
+		else
+			let Ops = ""
+		endif
+		lockvar Ops
+
+		"Performing struct insertion command
+		:call AddCode_CppClass_TemplStructDefault_Simple(StructName, TemplParamsDictionary, Ops)
+	endif
+:endfunction
+
+"Args: Name [OptionsString]
+:command! -nargs=* Struct :call CmdFunc_AddCode_CppClass_StructDefault_Simple(<f-args>)
+
+"Args: Name [template_argument list or Dictionary] [OptionsString]
+:command! -nargs=* TStruct :call CmdFunc_AddCode_CppClass_TemplStructDefault_Simple(<f-args>)
+
 "Helper function: Add Cpp class both definition and declaration
 "with default name
 :function! TestCppClass(TemplParams, IsStruct, OptionString)
