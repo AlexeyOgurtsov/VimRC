@@ -923,9 +923,62 @@ let g:AddCode_CppVarOrField_TypeName_ArgIndex = 3
 let g:AddCode_CppVarOrField_Name_ArgIndex = 4
 let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
+:function! GetDefaultVarInitExpr(OptionString, TypeName, InitExpr)
+	let l:res = ""
+	"TODO: default for init, refs, ptrs etc.
+	return l:res
+:endfunction
+
+"Returns real initialization expr:
+"- If empty line is used, uses default initializer for the given type 
+"(according to options, of course)
+:function! GetRealVarInitExpr(OptionString, TypeName, InitExpr)
+	let l:res = a:InitExpr
+	if (a:OptionString !~# "NoInit")
+		if a:InitExpr == ""
+			let l:res = GetDefaultVarInitExpr(a:OptionString, a:TypeName, a:InitExpr)
+		endif
+	endif
+	return l:res 
+:endfunction
+
+"Returns part of variable declaration part, to be located
+"RIGHT after the class name part (ClassName::Var = )
+"WARNING! Does NOT include ';'
+:function! GetCppVarDecl_Right(OptionString, TypeName, Name, InitExpr)
+	let l:res = a:Name
+	let l:RealInitExpr = GetRealVarInitExpr(a:OptionString, a:TypeName, a:InitExpr)
+	if len(l:RealInitExpr) > 0
+		let l:res .= " = "
+		let l:res .= l:RealInitExpr
+	endif
+	return l:res
+:endfunction
+
+"Returns declaration of cpp variable WITHOUT ;
+"(for any reason - field, argument
+"variable, local function variable etc.) 
+:function! GetCppVarDecl(OptionString, TypeName, Name, InitExpr)
+	let l:res = a:TypeName
+	if(len(l:res) > 0)
+		let l:res .= " "
+	endif
+	let l:res .= GetCppVarDecl_Right(a:OptionString, a:TypeName, a:Name, a:InitExpr)
+	return l:res
+:endfunction
+
+" Returns the main line of the declaration (WARNING! Does NOT include ";")
+:function! GetCppVar_MainLine(IsField, OptionString, TypeName, Name, InitExpr)
+	return GetCppVarDecl(a:OptionString, a:TypeName, a:Name, a:InitExpr)
+:endfunction
+
 :function! GetLines_CppVarOrField(OutCppLines, IsField, LinesAbove, OptionString, TypeName, Name, InitExpr)
 	let l:lines = []
-	"TODO
+	"Adding lines above
+	:call extend(l:lines, a:LinesAbove)
+	"TODO add comment
+	"Add the main line
+	:call add(l:lines, GetCppVar_MainLine(a:IsField, a:OptionString, a:TypeName, a:Name, a:InitExpr).";")
 	return l:lines
 :endfunction
 

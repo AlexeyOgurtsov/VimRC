@@ -54,3 +54,7 @@ Type generation
 3. RValueRef
 3.1. IsRValueRef (+DONE, TESTED)
 3.2. Add (+DONE, TESTED)
+
+Default body computation
+1. Default init expr for types inside default function body calculation
+2. Add not impl call

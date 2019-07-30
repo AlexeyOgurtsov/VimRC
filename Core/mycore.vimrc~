@@ -19,6 +19,30 @@
 	:endif
 :endfunction
 
+"Append char if not empty
+:function! GetWithChar_IfNotEmpty(S, Char)
+	if(len(a:S) > 0)
+		return Char.a:S
+	endif
+	return a:S
+:endfunction
+
+"Append space if not empty
+:function! GetSpaced_IfNotEmpty(S)
+	return GetWithChar_IfNotEmpty(a:S, " ")
+:endfunction
+
+"Append tab if not empty
+:function! GetTabbed_IfNotEmpty(S)
+	return GetWithChar_IfNotEmpty(a:S, "\t")
+:endfunction
+
+"Append newline if not empty
+:function! GetNewLined_IfNotEmpty(S)
+	return GetWithChar_IfNotEmpty(a:S, "\r")
+:endfunction
+
+"
 "string util heler functions for text
 "Appends a line to list if it's not empty
 "
