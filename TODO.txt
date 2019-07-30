@@ -1,0 +1,11 @@
+Function
+1. Static support
+
+UStruct/UClass
+1. Add F for ustruct, capitalize first letter (+DONE)
+2. Add UClass generators:
+2.1. Object
+2.2. Actor
+
+Code blocks
+1. Find .cpp file and insert there

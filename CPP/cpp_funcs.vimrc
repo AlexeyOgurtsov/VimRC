@@ -727,6 +727,9 @@
 	:call AddCode_CppClass_Default(a:IsStruct, a:Name, a:OptionString, [])
 :endfunction
 
+"Argument indices
+let g:AddCode_CppClass_ClassNameArgIndex = 2
+
 :function! CmdFunc_AddCode_CppClass_Default(...)
 	let args = a:000
 	lockvar args
@@ -751,7 +754,7 @@
 		return
 	else
 		"here we have 1 or 2 arguments
-		let StructName = args[2]
+		let StructName = args[g:AddCode_CppClass_ClassNameArgIndex]
 		lockvar StructName
 		if n >= 2
 			let Ops = args[3]
@@ -797,7 +800,7 @@
 		return
 	else
 		"here we have 2 or 3 arguments
-		let StructName = args[2]
+		let StructName = args[g:AddCode_CppClass_ClassNameArgIndex]
 		lockvar StructName
 		let TemplParams = eval(args[3])
 		:if type(TemplParams) ==  v:t_dict
