@@ -153,6 +153,60 @@
 	"TODO: Insert const for types
 	return a:DeclContentString
 :endfunction 
+
+"*** Type string of form "Type*" or "const Type*"
+:function! GetTypeString_Ptr(TypeName, IsConst)
+	let Tp = a:TypeName . "*"
+	if(a:IsConst)
+		let Tp = "const " . Tp
+	endif
+	return Tp
+:endfunction
+"*** Is type string Const or Non-const ptr
+:function! IsPtr(TypeStr)
+	return a:TypeStr =~ "*"
+:endfunction
+"*** Is type string Ptr to Const 
+:function! IsPtrToConst(TypeStr)
+	let deref_index = strridx(a:TypeStr, "*")
+	if deref_index < 0
+		return 0
+	endif
+	let const_index = stridx(a:TypeStr, "const")
+	if const_index < 0
+		return 0
+	endif
+	return const_index < deref_index
+:endfunction
+"* Whether PTR, to MUTABLE (non-const) value
+:function! IsPtrToMutable(TypeStr)
+	return (IsPtr(a:TypeStr)) && BoolNot(IsPtrToConst(a:TypeStr))
+:endfunction
+"**** Is type string RValue Ref
+:function! IsRValueRef(TypeStr)
+	return (a:TypeStr =~ "&&")
+:endfunction
+"**** Is type string Const or non-const ref and NOT RValue Ref
+:function! IsReference(TypeStr)
+	return (a:TypeStr =~ "&") && BoolNot(IsRValueRef(a:TypeStr))
+:endfunction
+:function! IsReferenceToConst(TypeStr)
+	if(BoolNot(IsReference(a:TypeStr)))
+		return
+	endif
+	let ref_index = strridx(a:TypeStr, "&")
+	if ref_index < 0
+		return 0
+	endif
+	let const_index = stridx(a:TypeStr, "const")
+	if const_index < 0
+		return 0
+	endif
+	return const_index < ref_index
+:endfunction
+:function! IsReferenceToMutable(TypeStr)
+	return (IsReference(a:TypeStr)) && BoolNot(IsReferenceToConst(a:TypeStr))
+:endfunction
 "*** Type string of form "Type&&"
 :function! GetTypeString_RValueRef(TypeName)
 	return a:TypeName . "&&"
@@ -173,6 +227,7 @@
 :function! GetArgumentString_RefToConst(TypeName, ArgName)
 	return GetTypeString_RefToConst(a:TypeName) . " " . a:ArgName
 :endfunction
+
 "*** Content string for copy/move ctor/assignment operators
 :function! GetFuncImplContentString_CopyMove(IsMove, ClassName, TemplParams, OptionString)
 	let l:ArgName = "rhs"
@@ -728,8 +783,7 @@
 :endfunction
 
 "Argument indices
-let! g:AddCode_CppClass_ClassNameArgIndex = 2
-lockvar g:AddCode_CppClass_ClassNameArgIndex
+let g:AddCode_CppClass_ClassNameArgIndex = 2
 
 :function! CmdFunc_AddCode_CppClass_Default(...)
 	let args = a:000
