@@ -83,4 +83,55 @@
 	:call call(function("CmdFunc_AddCode_CppClass_Default"), new_args)
 :endfunction
 
+:function! GetUPropertyLine_ForVar(ContextString, OptionString, TypeStr, Name, Category)
+	"TODO: Check correct meta line based on access (private, public etc.)
+	let l:Specs = "EditAnywhere, BlueprintReadWrite"
+	let l:MetaLine = "AllowPrivateAccess=true"
+	return GetUPropertyLine(Specs, MetaLine, a:Category)
+:endfunction
+
+:function! CmdFunc_AddCode_UVarOrProp(...)
+	let l:n = len(a:000)
+	if l:n < 5
+		echoerr "OptionString, Category, TypeStr and Name must be specified"
+		return
+	else
+		"Here we have valid count of arguments supplied
+		"Forming up arguments
+		let l:IsField = a:000[0]
+		let l:OptionString = a:000[1]
+		let l:Category = a:000[2]
+		let l:TypeStr = a:000[3]
+		let l:Name = a:000[4]
+
+		" If initializer list is specified
+		if l:n >= 5
+			let l:InitializerList = a:000[5]
+		else
+			let l:InitializerList = ""
+		endif
+
+		"Context string: includes info about the context:
+		"where we insert the property (public, private, protected etc.)
+		
+		let l:ContextString = "" "TODO
+
+		"Calculating lines above (typically UPROPERTY())
+		if (l:OptionString !~# "NoProp;")
+			let l:LinesAbove = [ GetUPropertyLine_ForVar(l:ContextString, l:OptionString, l:TypeStr, l:Name, l:Category) ]
+		else
+			let l:LinesAbove = []
+		endif
+
+		"Calling the command
+		let l:NewArgs = [l:IsField, l:LinesAbove, l:OptionString, l:TypeStr, l:Name, l:InitializerList]
+		:call call(function("CmdFunc_AddCode_CppVarOrField"), l:NewArgs)
+	endif
+:endfunction
+
 :command! -nargs=* UStru :call CmdFunc_AddCode_UClass(1, ["GENERATED_BODY()",""], <f-args>)
+
+"Add Unreal Property (with UPROPERTY or without, according to flags)
+"Arguments:
+"OptionString Category Type Name [InitExpr]
+:command! -nargs=* UPr :call CmdFunc_AddCode_UVarOrProp(0, <f-args>)

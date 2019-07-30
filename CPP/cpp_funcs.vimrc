@@ -1021,7 +1021,8 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let OptionString = a:000[g:AddCode_CppVarOrField_OptionString_ArgIndex]
 
 	if n < 2
-		echoerr "TypeName and Name must be specified"
+		echoerr "OptionString, TypeName and Name must be specified"
+		return
 	else
 		let TypeName = args[g:AddCode_CppVarOrField_TypeName_ArgIndex]
 		let Name = args[g:AddCode_CppVarOrField_Name_ArgIndex]
