@@ -934,7 +934,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 "(according to options, of course)
 :function! GetRealVarInitExpr(OptionString, TypeName, InitExpr)
 	let l:res = a:InitExpr
-	if (a:OptionString !~# "NoInit")
+	if (a:OptionString !~# "NoInit;")
 		if a:InitExpr == ""
 			let l:res = GetDefaultVarInitExpr(a:OptionString, a:TypeName, a:InitExpr)
 		endif
