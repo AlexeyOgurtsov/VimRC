@@ -1,7 +1,7 @@
 Function
 1. Static support
 
-UStruct/UClass
+UStruct/UClass commands
 1. Add F for ustruct, capitalize first letter (+DONE)
 2. Add UClass generators:
 2.1. Object
@@ -10,11 +10,28 @@ UStruct/UClass
 Code blocks
 1. Find .cpp file and insert there
 
+Variable commands
+1. Insert variable at current file location
+2. Default variable generators:
+2.1. float, int
+2.2. const char*
+3. UClass Variable generators:
+3.1. Ptr to UClass
+3.2. Ptr to UObject
+3.3. Ptr to AActor
+
 Property
 1. Commands
 
 Property generation
-1. 
+1. Field itself
+2. Getters/Setters
+3. Initialize
+
+1. Field generation:
+1.1. ResultType
+1.2. Name
+1.3. Default initializer
 
 Function generation
 1.

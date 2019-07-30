@@ -915,9 +915,60 @@ let g:AddCode_CppClass_ClassNameArgIndex = 2
 	endif
 :endfunction
 
+"Argument indices
+let g:AddCode_CppVarOrField_IsField_ArgIndex = 0
+let g:AddCode_CppVarOrField_LinesAbove_ArgIndex = 1
+let g:AddCode_CppVarOrField_OptionString_ArgIndex = 2
+let g:AddCode_CppVarOrField_TypeName_ArgIndex = 3
+let g:AddCode_CppVarOrField_Name_ArgIndex = 4
+let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
+
+" Adds variable or field 
+" (See command)
+" Arguments:
+" 1. IsField (1 - field)
+" Fields are added to classes always (ever if we're currently inside function)
+" 2. LinesAbove (List of strings)
+" May include here UPROPERTY(), for example
+" 3. OptionString  (string)
+" Of form "Opt1;Opt2;" (string)
+" 4. TypeName (String)
+" 5. Name (String)
+" 6. Initializer expression (optional, String)
+:function! CmdFunc_AddCode_CppVarOrField(...)
+	let args = a:000
+	let n = len(args) - 3
+
+	:call assert_true(len(args) >= g:AddCode_CppVarOrField_InitExpr_ArgIndex, "Argument count wrong for Cpp Var or Field addition function")
+
+	let IsField = a:000[g:AddCode_CppVarOrField_IsField_ArgIndex]
+	let LinesAbove = a:000[g:AddCode_CppVarOrField_LinesAbove_ArgIndex]
+	let OptionString = a:000[g:AddCode_CppVarOrField_OptionString_ArgIndex]
+
+	if n < 2
+		echoerr "TypeName and Name must be specified"
+	else
+		let TypeName = args[g:AddCode_CppVarOrField_TypeName_ArgIndex]
+		let Name = args[g:AddCode_CppVarOrField_Name_ArgIndex]
+
+		if n >= 3
+			let InitializerExpression = args[g:AddCode_CppVarOrField_InitExpr_ArgIndex]
+		else
+			let InitializerExpression = "" "TODO: Should we choose default initializer
+		endif
+
+		"TODO"
+	endif
+:endfunction
+
 "Include:
 "Args: Name (with or without .h) [IsSystem (0/1)]
 :command! -nargs=* Inc :call CmdFunc_Inc(<f-args>)
+
+"Adds Cpp variable at current position of the document
+"(inside function, or inside class)
+"Args: OptionString Type Name [InitExpr]
+:command! -nargs=* Va :call CmdFunc_AddCode_CppVarOrField(0, [], <f-args>)
 
 "Args: Name [OptionsString]
 :command! -nargs=* Stru :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
