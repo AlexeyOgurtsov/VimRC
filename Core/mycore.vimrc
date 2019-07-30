@@ -3,6 +3,14 @@
 :set nowrap
 :set number
 
+
+"******* Debugging
+:let g:mycore_echo_debug = 0
+:function! DebugEcho(Msg)
+	if g:mycore_echo_debug
+		echo a:Msg
+	endif
+:endfunction
 :function! BoolNot(Val)
 	:if a:Val
 		return 0
@@ -10,6 +18,7 @@
 		return 1
 	:endif
 :endfunction
+
 "string util heler functions for text
 "Appends a line to list if it's not empty
 "
@@ -129,6 +138,37 @@
 	return newpos
 :endfunction
 
+"Searches for the given pattern in range of lines
+"Returns found line index
+:function! SearchRange(StartLineIdx, StopLineIdx, Pattern, SearchFlags, Options)
+	:call cursor(a:StartLineIdx, 1)
+	let pos = search(a:Pattern, a:SearchFlags, a:StopLineIdx)
+	return pos
+:endfunction
+
+"Searchs for the given search pattern
+"Returns: New cursor position
+:function! JumpWhereRange(StartLineIdx, StopLineIdx, Pattern, Options)
+	let SearchFlags = []
+	let pos = SearchRange(a:StartLineIdx, a:StopLineIdx, a:Pattern, SearchFlags, a:Options)
+	:call cursor(newpos)
+	return newpos
+:endfunction
+
+"Returns: list of lines of the given buffer
+:function! GetBufLinesRangeAt(StartLineIdx, EndLineIdx, Options)
+	return getbufline(bufnr('%'), a:StartLineIdx, a:EndLineIdx)
+:endfunction
+
+:function! GetBufLinesRangeAtMiddle_ByPattern(MiddleLineIdx, StartPattern, EndPattern, Options)
+	let l:end_line_index = line('$')
+	let l:startLineIdx = SearchRange(1, a:MiddleLineIdx+1, a:StartPattern, "", a:Options)
+	let l:endLineIdx = SearchRange(a:MiddleLineIdx, l:end_line_index+1, a:EndPattern, "", a:Options)
+	"TODO: Remove debug
+	echo "StartLine: ".l:startLineIdx." EndLine: ".l:endLineIdx
+	return GetBufLinesRangeAt(l:startLineIdx, l:endLineIdx, a:Options)
+:endfunction
+
 "Append both declaration and definition 
 " - based on current context (lines, buffer etc.) and options
 " - Automatically should perform identation (for example, when inside namespace
@@ -141,12 +181,4 @@
 	let l:PublicLineNumber = line('.')
 	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines)
 	"TODO: Add private lines
-:endfunction
-
-"******* Debugging
-:let g:mycore_echo_debug = 0
-:function! DebugEcho(Msg)
-	if g:mycore_echo_debug
-		echo a:Msg
-	endif
 :endfunction
