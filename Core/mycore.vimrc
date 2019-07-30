@@ -174,6 +174,9 @@
 " - Automatically should perform identation (for example, when inside namespace
 " etc.)
 " - Does NOT automatically jumps cursor at the end!
+" (because some commands need that cursor is jumped elsewhere)
+" Returns:
+" 	Index of line, where public lines where inserted
 :function! AddCode(PublicLines, PrivateLines, Options)
 	let l:AddPublic = (a:Options !~ "NoPublic;")
 	let l:AddPriv = (a:Options !~ "NoPriv;") 
@@ -181,4 +184,5 @@
 	let l:PublicLineNumber = line('.')
 	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines)
 	"TODO: Add private lines
+	return l:PublicLineNumber
 :endfunction

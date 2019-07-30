@@ -923,6 +923,28 @@ let g:AddCode_CppVarOrField_TypeName_ArgIndex = 3
 let g:AddCode_CppVarOrField_Name_ArgIndex = 4
 let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
+:function! GetLines_CppVarOrField(OutCppLines, IsField, LinesAbove, OptionString, TypeName, Name, InitExpr)
+	let l:lines = []
+	"TODO
+	return l:lines
+:endfunction
+
+"Adds properly indented cpp variable of field text at current line
+"(warning! Adds ONLY variable text, NO getters or setters etc.)
+"Arguments: see the corresponding CmdFunc
+:function! AddCode_CppVarOrField(IsField, LinesAbove, OptionString, TypeName, Name, InitExpr)
+	"Reserved for impl, for example initializers for static variables"
+	let l:variable_cpp_lines = []
+	"Variable declaration itself
+	let l:variable_lines = GetLines_CppVarOrField(l:variable_cpp_lines, a:IsField, a:LinesAbove, a:OptionString, a:TypeName, a:Name, a:InitExpr)
+
+	"Add code
+	let l:InsertionStartLine = AddCode(l:variable_lines, l:variable_cpp_lines, a:OptionString)
+
+	"We should jump after the inserted lines
+	:call JumpAfterAt(l:InsertionStartLine, l:variable_lines)
+:endfunction
+
 " Adds variable or field 
 " (See command)
 " Arguments:
@@ -945,7 +967,6 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let LinesAbove = a:000[g:AddCode_CppVarOrField_LinesAbove_ArgIndex]
 	let OptionString = a:000[g:AddCode_CppVarOrField_OptionString_ArgIndex]
 
-
 	if n < 2
 		echoerr "TypeName and Name must be specified"
 	else
@@ -958,7 +979,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 			let InitializerExpression = "" "TODO: Should we choose default initializer
 		endif
 
-		"TODO"
+		:call AddCode_CppVarOrField(IsField, LinesAbove, OptionString, TypeName, Name, InitializerExpression)
 	endif
 :endfunction
 
