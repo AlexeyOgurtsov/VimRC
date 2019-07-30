@@ -1,4 +1,15 @@
 "C++ functions for adding C++ stuff
+
+" Cpp Context at the given line
+" Members:
+" -All from Core
+:function! GetCppContextAt(LineIndex)
+	let l:res = {}
+	:call extend(l:res, GetCoreContextAt(a:LineIndex))
+	"TODO
+	return l:res
+:endfunction
+
 "*** #Include directive
 "Include header:
 "-Appends .h automatically (if not specified)
@@ -1021,7 +1032,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let OptionString = a:000[g:AddCode_CppVarOrField_OptionString_ArgIndex]
 
 	if n < 2
-		echoerr "TypeName and Name must be specified"
+		echoerr "OptionString, TypeName and Name must be specified"
 		return
 	else
 		let TypeName = args[g:AddCode_CppVarOrField_TypeName_ArgIndex]

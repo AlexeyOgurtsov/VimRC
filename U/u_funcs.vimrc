@@ -71,6 +71,15 @@
 	return FixedName
 :endfunction
 
+"Returns dictionary of context at the given line from the current buffer
+"Members:
+"- All members of GetContextDictAt
+:function! GetUnrealContextAt(LineIndex)
+	let l:Context = {}
+	:call extend(l:Context, GetCppContextAt(a:LineIndex))
+	return l:Context
+:endfunction
+
 :function! CmdFunc_AddCode_UClass(...)
 	let l:new_args = copy(a:000)
 	"Update arguments
@@ -83,7 +92,7 @@
 	:call call(function("CmdFunc_AddCode_CppClass_Default"), new_args)
 :endfunction
 
-:function! GetUPropertyLine_ForVar(ContextString, OptionString, TypeStr, Name, Category)
+:function! GetUPropertyLine_ForVar(Context, OptionString, TypeStr, Name, Category)
 	"TODO: Check correct meta line based on access (private, public etc.)
 	let l:Specs = "EditAnywhere, BlueprintReadWrite"
 	let l:MetaLine = "AllowPrivateAccess=true"
@@ -111,14 +120,17 @@
 			let l:InitializerList = ""
 		endif
 
-		"Context string: includes info about the context:
-		"where we insert the property (public, private, protected etc.)
-		
-		let l:ContextString = "" "TODO
+		"TODO: Why the insert line is NOT specified explicitly inside
+		"the command call?"
+		let l:InsertLine = line('.')	
+
+		"Context dictionary: includes info about the context:
+		"(See help near the context function definitions)
+		let l:Context = GetUnrealContextAt(l:InsertLine)
 
 		"Calculating lines above (typically UPROPERTY())
 		if (l:OptionString !~# "NoProp;")
-			let l:LinesAbove = [ GetUPropertyLine_ForVar(l:ContextString, l:OptionString, l:TypeStr, l:Name, l:Category) ]
+			let l:LinesAbove = [ GetUPropertyLine_ForVar(l:Context, l:OptionString, l:TypeStr, l:Name, l:Category) ]
 		else
 			let l:LinesAbove = []
 		endif

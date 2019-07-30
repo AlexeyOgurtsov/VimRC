@@ -210,3 +210,15 @@
 	"TODO: Add private lines
 	return l:PublicLineNumber
 :endfunction
+
+" Returns Core context with the given line index
+" Members:
+" Line at which context was taken
+let g:Context_Line = "Line"
+:function! GetCoreContextAt(LineIndex)
+	let l:res = {}
+	"Line
+	let l:res[g:Context_Line] = a:LineIndex
+	"TODO
+	return l:res
+:endfunction

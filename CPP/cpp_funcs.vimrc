@@ -1,4 +1,15 @@
 "C++ functions for adding C++ stuff
+
+" Cpp Context at the given line
+" Members:
+" -All from Core
+:function! GetCppContextAt(LineIndex)
+	let l:res = {}
+	:call extend(l:res, GetCoreContextAt(a:LineIndex))
+	"TODO
+	return l:res
+:endfunction
+
 "*** #Include directive
 "Include header:
 "-Appends .h automatically (if not specified)
