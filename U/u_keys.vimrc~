@@ -1,5 +1,5 @@
 "Enum class/literal
-:map <A-F3> :UEn Op1;Op2; N Misc
+:map <A-F3> :UEn Op1;Op2;uint8; N Misc
 "Property/Field
 :map <A-F5> :UPr Op1;Op2; Misc int32 Name 0
 "Struct/Class

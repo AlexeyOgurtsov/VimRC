@@ -1192,7 +1192,11 @@ let g:MaxCount_BaseCmdArgs = 2
 	"Add lines above
 	:call extend(l:lines, a:LinesAbove)
 	"Add main code
-	:call add(l:lines, "enum class ".a:Name)
+	let l:header_line = "enum class ".a:Name 
+	:if a:Ops =~ "uint8;"
+		let l:header_line .= " : uint8"
+	:endif
+	:call add(l:lines, l:header_line)
 	:call add(l:lines, "{")
 	"TODO: Add defaults lines for flags
 	:call add(l:lines, "};")
