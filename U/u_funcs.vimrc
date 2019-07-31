@@ -79,6 +79,9 @@
 	:call extend(l:Context, GetCppContextAt(a:LineIndex))
 	return l:Context
 :endfunction
+:function! GetContextAt(LineIndex)
+	return GetUnrealContextAt(a:LineIndex)
+:endfunction
 
 :function! CmdFunc_AddCode_UClass(...)
 	let l:new_args = copy(a:000)
@@ -126,7 +129,7 @@
 
 		"Context dictionary: includes info about the context:
 		"(See help near the context function definitions)
-		let l:Context = GetUnrealContextAt(l:InsertLine)
+		let l:Context = GetContextAt(l:InsertLine)
 
 		"Calculating lines above (typically UPROPERTY())
 		if (l:OptionString !~# "NoProp;")

@@ -201,27 +201,11 @@
 	return GetBufLinesRangeAt(l:startLineIdx, l:endLineIdx, a:Options)
 :endfunction
 
-"Append both declaration and definition 
-" - based on current context (lines, buffer etc.) and options
-" - Automatically should perform identation (for example, when inside namespace
-" etc.)
-" - Does NOT automatically jumps cursor at the end!
-" (because some commands need that cursor is jumped elsewhere)
-" Returns:
-" 	Index of line, where public lines where inserted
-:function! AddCode(PublicLines, PrivateLines, Options)
-	let l:AddPublic = (a:Options !~ "NoPublic;")
-	let l:AddPriv = (a:Options !~ "NoPriv;") 
-	"Adding public code
-	let l:PublicLineNumber = line('.')
-	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines)
-	"TODO: Add private lines
-	return l:PublicLineNumber
-:endfunction
 
 " Returns Core context with the given line index
 " Members:
 " Line at which context was taken
+" WARNING!!! Use GetContextAt whenever possible!)
 let g:Context_Line = "Line"
 :function! GetCoreContextAt(LineIndex)
 	let l:res = {}
@@ -230,3 +214,51 @@ let g:Context_Line = "Line"
 	"TODO
 	return l:res
 :endfunction
+
+"Warning! Override this function in the concrete files (for cpp, for example),
+"So correct context is used
+:function! GetContextAt(LineIndex)
+	return GetCoreContextAt(a:LineIndex)
+:endfunction
+
+:function! GetContextLine(Context)
+	return a:Context[g:Context_Line]
+:endfunction
+
+"If passed context is empty, uses the default context
+:function! GetBestContext(Context)
+	if a:Context == {}
+		return GetContextAt(line('.'))
+	else
+		return a:Context
+	endif
+:endfunction
+
+"Append both declaration and definition 
+" - based on the given public context (lines, buffer etc.) and options
+" - Automatically should perform identation (for example, when inside namespace
+" etc.)
+" - Does NOT automatically jumps cursor at the end!
+" (because some commands need that cursor is jumped elsewhere)
+" Returns:
+" 	Index of line, where public lines where inserted
+
+:function! AddCodeAt(Context, PublicLines, PrivateLines, Options)
+	let l:AddPublic = (a:Options !~ "NoPublic;")
+	let l:AddPriv = (a:Options !~ "NoPriv;") 
+	"Adding public code
+	let l:BestContext = GetBestContext(a:Context)
+	let l:PublicLineNumber = GetContextLine(l:BestContext)
+	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines)
+	"TODO: Add private lines
+	return l:PublicLineNumber
+:endfunction
+
+"Append both declaration and definition at the given context at CURRENT line
+" Returns:
+" 	Index of line, where public lines where inserted
+:function! AddCode(PublicLines, PrivateLines, Options)
+	let l:Context = GetContextAt(line('.'))
+	return AddCodeAt(l:Context, a:PublicLines, a:PrivateLines, a:Options)
+:endfunction
+

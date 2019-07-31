@@ -10,6 +10,10 @@
 	return l:res
 :endfunction
 
+:function! GetContextAt(LineIndex)
+	return GetCppContextAt(a:LineIndex)
+:endfunction
+
 "*** Comment
 "Arguments:
 "	InputLines - set of lines passed initially to make comment
@@ -42,7 +46,7 @@
 		else
 			"Multiline comment here
 			:call PrependBlock(l:res_lines, "* ")
-			:call insert(0, l:res_lines, '/**')
+			:call insert(l:res_lines, '/**', 0)
 			:call add(l:res_lines, '*/')
 		endif
 	else
@@ -55,6 +59,38 @@
 		:call PrependBlock(l:res_lines, '// ')
 	endif
 	return l:res_lines
+:endfunction
+
+" Adds a new comment code at the given context, if it should be done according
+" to options
+" Returns: Index of line, where comment was inserted
+:function! AddCode_CppComment_IfShould(Context, IsAsterisk, InputLines, Options)
+	let l:lines = GetLines_CppComment_IfShould(a:IsAsterisk, a:InputLines, a:Options)
+	if len(l:lines) > 0
+		let l:res = AddCodeAt(GetBestContext(a:Context), l:lines, [], a:Options)
+	endif
+	return GetContextLine(a:Context)
+:endfunction
+
+:function! GetLines_CppComment_IfShould(IsAsterisk, InputLines, Options)
+	if (a:Options !~# "NoCom;")
+		let l:lines = GetLines_CppComment(a:IsAsterisk, a:InputLines, a:Options)
+		return l:lines
+	endif
+	return []
+:endfunction
+
+:function! GetLines_GetVarOrFieldCommentText(IsField, TypeName, Name, InitExpr, OptionString)
+	let l:lines = []
+	:call add(l:lines, a:Name)
+	return l:lines
+:endfunction
+
+:function! GetLines_GetVarOrFieldComment_IfShould(IsField, TypeName, Name, InitExpr, OptionString)
+	let l:CommentTextLines = GetLines_GetVarOrFieldCommentText(a:IsField, a:TypeName, a:Name, a:InitExpr, a:OptionString)
+	let l:IsAsterisk = 1
+	let l:CommentLines = GetLines_CppComment_IfShould(l:IsAsterisk, l:CommentLines, a:OptionString)
+	return l:CommentLines
 :endfunction
 
 "*** #Include directive
@@ -810,7 +846,7 @@
 	let l:PrivLines = []
 	let l:PublicLines = GetLines_CppClass_General(l:PrivLines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove)
 	"Add code"
-	:call AddCode(l:PublicLines, l:PrivLines, a:OptionString)
+	:call AddCodeAt(GetContextAt(line('.')), l:PublicLines, l:PrivLines, a:OptionString)
 	"TODO Cursor jumping
 :endfunction
 " Adds code of cpp struct with default options
@@ -1032,9 +1068,11 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 :function! GetLines_CppVarOrField(OutCppLines, IsField, LinesAbove, OptionString, TypeName, Name, InitExpr)
 	let l:lines = []
+	"add comment
+	let l:CommentLines = GetLines_GetVarOrFieldComment_IfShould(a:IsField, a:TypeName, a:Name, a:InitExpr, a:OptionString)
+	:call extend(l:lines, l:CommentLines)
 	"Adding lines above
 	:call extend(l:lines, a:LinesAbove)
-	"TODO add comment
 	"Add the main line
 	:call add(l:lines, GetCppVar_MainLine(a:IsField, a:OptionString, a:TypeName, a:Name, a:InitExpr).";")
 	return l:lines
@@ -1050,7 +1088,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:variable_lines = GetLines_CppVarOrField(l:variable_cpp_lines, a:IsField, a:LinesAbove, a:OptionString, a:TypeName, a:Name, a:InitExpr)
 
 	"Add code
-	let l:InsertionStartLine = AddCode(l:variable_lines, l:variable_cpp_lines, a:OptionString)
+	let l:InsertionStartLine = AddCodeAt(GetContextAt(line('.')), l:variable_lines, l:variable_cpp_lines, a:OptionString)
 
 	"We should jump after the inserted lines
 	:call JumpAfterAt(l:InsertionStartLine, l:variable_lines)
