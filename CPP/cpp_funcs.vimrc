@@ -93,6 +93,16 @@
 	return l:CommentLines
 :endfunction
 
+:function! GetLines_EnumClassComment_IfShould(Name, Ops)
+	"TODO: ugly redirection
+	return GetLines_GetVarOrFieldComment_IfShould(0, "", a:Name, "", a:Ops)
+:endfunction
+
+:function! GetLines_EnumLiteralComment_IfShould(Name, Ops)
+	"TODO: ugly redirection
+	return GetLines_GetVarOrFieldComment_IfShould(0, "", a:Name, "", a:Ops)
+:endfunction
+
 "*** #Include directive
 "Include header:
 "-Appends .h automatically (if not specified)
@@ -1174,12 +1184,38 @@ let g:MaxCount_BaseCmdArgs = 2
 	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
 :endfunction
 
-:function! AddCode_EnumClass(BaseArgs, Ops, Context, LinesAbove, Name)
+:function! GetLines_EnumClass(BaseArgs, Ops, Context, LinesAbove, Name)
+	let l:lines = []
+	"Add comment
+	let l:comment_lines = GetLines_EnumClassComment_IfShould(a:Name, a:Ops)
+	:call extend(l:lines, l:comment_lines)
+	"Add lines above
+	:call extend(l:lines, a:LinesAbove)
+	"Add main code
+	:call add(l:lines, "enum class ".a:Name)
+	:call add(l:lines, "{")
+	"TODO: Add defaults lines for flags
+	:call add(l:lines, "};")
+	return l:lines
+:endfunction
+
+:function! GetLines_EnumLiteral(BaseArgs, Ops, Context, LinesAbove, Name)
+	let l:lines = []
+	"Add Comment
+	let l:comment_lines = GetLines_EnumLiteralComment_IfShould(a:Name, a:Ops)
+	:call extend(l:lines, l:comment_lines)
 	"TODO
+	return l:lines
+:endfunction
+
+:function! AddCode_EnumClass(BaseArgs, Ops, Context, LinesAbove, Name)
+	let l:lines = GetLines_EnumClass(a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:Name)
+	return AddCodeAt(a:Context, l:lines, [], a:Ops)
 :endfunction
 
 :function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LinesAbove, Name)
-	"TODO
+	let l:lines = GetLines_EnumLiteral(a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:Name)
+	return AddCodeAt(a:Context, l:lines, [], a:Ops)
 :endfunction
 
 :function! IsEnumLiteralContextType(ContextType)
@@ -1211,9 +1247,9 @@ let g:MaxCount_BaseCmdArgs = 2
 	
 	let l:ContextType = GetContextType(l:Context)
 	if IsEnumClassContextType(l:ContextType)
-		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, GetKey_DictType(l:BaseArgs, "ClassLinesAbove"), l:Name)
+		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, GetKey_ListType(l:BaseArgs, "ClassLinesAbove"), l:Name)
 	elseif IsEnumLiteralContextType(l:ContextType)
-		return AddCode_EnumLiteral(l:BaseArgs, l:Ops, l:Context, GetKey_DictType(l:BaseArgs, "LiteralLineAfter"), l:Name)
+		return AddCode_EnumLiteral(l:BaseArgs, l:Ops, l:Context, GetKey_StringType(l:BaseArgs, "LiteralLineAfter"), l:Name)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", a:OutContext, "")

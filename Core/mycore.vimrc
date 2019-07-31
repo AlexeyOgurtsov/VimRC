@@ -51,6 +51,14 @@
 	endif
 :endfunction
 
+:function! GetKey_ListType(Dict, Key)
+	if(has_key(a:Dict, a:Key))
+		return a:Dict[a:Key]
+	else
+		return []
+	endif
+:endfunction
+
 "Gets key value of string type or returns "" if not specified
 :function! GetKey_StringType(Dict, Key)
 	if(has_key(a:Dict, a:Key))

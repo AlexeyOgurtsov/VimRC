@@ -201,8 +201,6 @@
 	endif
 
 	"Calling the cpp-level command
-	"TODO: Update the BaseArgs: "ClassLinesAbove"
-	"TODO: Update the BaseArgs: "LiteralLinesAbove"
 	:let l:NewArgs = copy(a:000)
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
 	:let l:NewArgs[g:BaseArgsIndex]["LiteralLineAfter"] = l:LiteralLineAfter
