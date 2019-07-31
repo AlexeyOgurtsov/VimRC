@@ -1140,7 +1140,9 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 "	(according to default ExtractOptions)
 "Returns: true if failed when extacting arguments
 "Options are returned as a list, where zero element is the passed string of options
-:function! ExtractCmdArgs_TrueOnFail(ExtractOptions, ArgList, OutContext, OutBaseArgs, OutOpsList)
+"Custom args - the rest of all unprocessed arguments
+let g:MaxCount_BaseCmdArgs = 2
+:function! ExtractCmdArgs_TrueOnFail(ExtractOptions, ArgList, OutContext, OutBaseArgs, OutOpsList, OutCustomArgs)
 	"Basic arguments"	
 	let l:no_base_args = GetBaseArgsChecked(a:ArgList, a:OutBaseArgs)
 	if l:no_base_args
@@ -1162,6 +1164,11 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	else
 		let a:OutOpsList[0] = l:OpsString
 	endif
+
+	"Extracting custom args
+	if len(a:ArgList) >= g:MaxCount_BaseCmdArgs
+		:call extend(a:OutCustomArgs, a:ArgList[g:MaxCount_BaseCmdArgs:])
+	endif
 		
 	"Current context
 	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
@@ -1173,10 +1180,23 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:Context = {}
 	let l:BaseArgs = {}
 	let l:OpsList = []
-	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList)
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
 		return 0
 	endif
 	let l:Ops = l:OpsList[0]
+
+	"Checking custom args
+	if NoArg(1, l:MyArgs, "Name", 0)
+		return 0
+	endif
+
+	"Checking args
+	let l:Name = l:MyArgs[0]
+	
+	"TODO: Perform command
+
+	return 1
 :endfunction
 
 "Include:

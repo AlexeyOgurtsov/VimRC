@@ -84,6 +84,16 @@
 	:call CombineDict(a:Dict, a:NewValueDict)
 :endfunction
 
+"Returns true if element with specified index does NOT exist within the given List
+:function! NoArg(IsError, ArgList, ArgName, Index)
+	if a:Index >= len(a:ArgList)	
+		:call CoreEcho(a:IsError, 'Argument "'.a:ArgName.'"'.' (index='.a:Index.') not specified', "")
+		return 1
+	endif 
+
+	return 0
+:endfunction
+
 "If no basic args or they are of wrong type,
 "returns true and display msg if no base args provided by the command
 "NOTE! Basic args must be the FIRST (i.e.g with zero index) element 
@@ -100,7 +110,7 @@
 		endif
 		:call extend(a:OutBaseArgs, l:base_args)
 	endif
-	
+	return 0
 :endfunction
 
 "Append char if not empty
