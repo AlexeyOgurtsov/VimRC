@@ -1135,11 +1135,10 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 :function! CmdFunc_AddCode_EnumClassOrLiteral(...)
 	"Arguments"	
-	let l:base_args = a:000[0]
-	let l:ops = "" TODO
+	l:comm_args = 
 	
 	"Current context
-	let l:Context = ContextOrCurr(GetCmdBase_Context(l:base_args), l:ops)
+	let l:Context = ContextOrCurr(l:comm_args["Context"], "")
 	:call EchoContext(0, "Context", l:Context, "")
 	"TODO
 :endfunction

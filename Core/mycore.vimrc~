@@ -11,12 +11,59 @@
 		echo a:Msg
 	endif
 :endfunction
+
+:function! CoreEcho(IsError, Line, EchoOptions)
+	if a:IsError
+		:call echoerr(a:Line)
+	else
+		:call echo(a:Line)
+	endif
+:endfunction
+
+:function! EchoBlock(IsError, Lines, EchoOptions)
+	:for Line in a:Lines
+		:call CoreEcho(a:IsError, Line, a:EchoOptions)
+	:endfor
+:endfunction
+
 :function! BoolNot(Val)
 	:if a:Val
 		return 0
 	:else
 		return 1
 	:endif
+:endfunction
+
+"Gets key value of Dictionary type or returns {} if not specified
+:function! GetKey_DictType(Dict, Key)
+	if(has_key(a:Dict, a:Key))
+		return a:Dict[a:key]
+	else
+		return {}
+	endif
+:endfunction
+
+"Gets key value of string type or returns "" if not specified
+:function! GetKey_StringType(Dict, Key)
+	if(has_key(a:Dict, a:Key))
+		return a:Dict[a:key]
+	else
+		return ""
+	endif
+:endfunction
+
+"Gets key value of int type or returns 0 if not specified
+:function! GetKey_IntType(Dict, Key)
+	if(has_key(a:Dict, a:Key))
+		return a:Dict[a:key]
+	else
+		return 0
+	endif
+:endfunction
+
+"Cmd base arg context in the dictionary of base arguments
+:function! GetCmdBase_Context(Dict)
+	return GetKey_DictType(a:Dict, "Context")
 :endfunction
 
 "Append char if not empty
@@ -222,7 +269,31 @@ let g:Context_Line = "Line"
 :endfunction
 
 :function! GetContextLine(Context)
-	return Context[g:Context_Line]
+	return a:Context[g:Context_Line]
+:endfunction
+
+:function! GetCoreEchoContextLines(IsError, Msg, Context, EchoOptions)
+	let l:lines = []
+	let l:header_line = ""
+	if a:IsError
+		let l:header_line .= "Error! "
+	endif
+	let l:header_line .= a:Msg
+	:call add(l:lines, l:header_line)
+	"Context lines
+	:call add(l:lines, "line: ".GetContextLine(a:Context))
+	return l:lines
+:endfunction
+
+"Returns set of lines of the current context 
+"WARNING! override in concrete layers (.cpp etc.)
+:function! GetEchoContextLines(IsError, Msg, Context, EchoOptions)
+	return GetCoreEchoContextLines(a:IsError, a:Msg, a:Context, a:EchoOptions)
+:endfunction
+
+:function! EchoContext(IsError, Msg, Context, EchoOptions)
+	let l:lines = GetEchoContextLines(a:IsError, a:Msg, a:Context, a:EchoOptions)
+	:call EchoBlock(a:IsError, l:lines, a:EchoOptions)
 :endfunction
 
 "If passed context is empty, uses the default context
@@ -232,6 +303,15 @@ let g:Context_Line = "Line"
 	else
 		return a:Context
 	endif
+:endfunction
+
+:function! GetCurrContext(Options)
+	return GetContextAt(line('.'))
+:endfunction
+
+"Returns given context (or current), honors options
+:function! ContextOrCurr(Context, Options)
+	return GetBestContext(GetCurrContext(a:Options))
 :endfunction
 
 "Append both declaration and definition 

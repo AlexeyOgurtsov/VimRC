@@ -1133,9 +1133,28 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	endif
 :endfunction
 
+:function! CmdFunc_AddCode_EnumClassOrLiteral(...)
+	"Arguments"	
+	let l:base_args = a:000[0]
+	let l:ops = "" "TODO
+	
+	"Current context
+	let l:Context = ContextOrCurr(GetCmdBase_Context(l:base_args), l:ops)
+	:call EchoContext(0, "Context", l:Context, "")
+	"TODO
+:endfunction
+
 "Include:
 "Args: Name (with or without .h) [IsSystem (0/1)]
 :command! -nargs=* Inc :call CmdFunc_Inc(<f-args>)
+
+"Add Cpp enum class or enum literal at current position of the document
+"based on current context (inside enum or inside class)
+"Arguments (when adding enum class):
+"	Ops ClassName
+"Arguments (when adding enum literal):
+"	Ops LiteralName
+:command! -nargs=* En :call CmdFunc_AddCode_EnumClassOrLiteral({}, <f-args>)
 
 "Adds Cpp variable at current position of the document
 "(inside function, or inside class)

@@ -1,10 +1,8 @@
 "Key bindings for C++ vim
 "Include
 :map <F12> :Inc 
-"TODO Enum"
-":map <F3> "Add enum class (TODO)
-":map <F4> "Add enum member 
-" (TODO: Or maybe F3 to be dependent on context - add enum or new member)
+"Enum class or enum literal (based on context)
+:map <F3> :En Op1;Op2; N
 "Variable/Field
 :map <F5> :Va Op1;Op2; int Var 0
 "Struct/Class

@@ -51,18 +51,9 @@ Property
 1. Commands
 
 Property generation
-1. Field itself
+1. Field itself (+DONE)
 2. Getters/Setters
 3. Initialize
-
-1. Field generation:
-1.1. ResultType
-1.2. Name
-1.3. Default initializer
-
-Variable generation impl
-1. InsertVariableAt
-2. Integrate AddCodeAt_CppVarOrField into the Variable generation command
 
 Function generation
 1.
@@ -70,7 +61,6 @@ Function generation
 Comment generation
 1. General
 1.1. Cpp comment GetLines function (+DONE)
-1.2. Add cpp comment function
 2. Types:
 2.1. Function
 2.1.1. Return value
