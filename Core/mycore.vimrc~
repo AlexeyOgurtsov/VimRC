@@ -34,10 +34,18 @@
 	:endif
 :endfunction
 
+:function! GetOrDefault(L, Index, DefaultValue)
+	if(a:Index < len(a:L))
+		return a:L[a:Index]
+	else
+		return a:DefaultValue
+	endif
+:endfunction 
+
 "Gets key value of Dictionary type or returns {} if not specified
 :function! GetKey_DictType(Dict, Key)
 	if(has_key(a:Dict, a:Key))
-		return a:Dict[a:key]
+		return a:Dict[a:Key]
 	else
 		return {}
 	endif
@@ -98,6 +106,7 @@
 "returns true and display msg if no base args provided by the command
 "NOTE! Basic args must be the FIRST (i.e.g with zero index) element 
 "of the argument list
+:let g:BaseArgsIndex = 0
 :function! GetBaseArgsChecked(ArgList, OutBaseArgs)
 	if(len(a:ArgList) == 0)
 		echoerr "Base args must be provided as first argument of Dictionary type (specify {} if no basic args to be passed)"

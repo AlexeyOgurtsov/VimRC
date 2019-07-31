@@ -1174,12 +1174,20 @@ let g:MaxCount_BaseCmdArgs = 2
 	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
 :endfunction
 
-:function! AddCode_EnumClass(BaseArgs, Ops, Context, Name)
+:function! AddCode_EnumClass(BaseArgs, Ops, Context, LinesAbove, Name)
 	"TODO
 :endfunction
 
-:function! AddCode_EnumLiteral(BaseArgs, Ops, Context, Name)
+:function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LinesAbove, Name)
 	"TODO
+:endfunction
+
+:function! IsEnumLiteralContextType(ContextType)
+	return (a:ContextType == g:ContextType_Enum)
+:endfunction
+
+:function! IsEnumClassContextType(ContextType)
+	return (a:ContextType == g:ContextType_Global) || (a:ContextType == g:ContextType_Class) || (a:ContextType == g:ContextType_Unknown)
 :endfunction
 
 "Argumetns: see the corresponding command for arguments
@@ -1202,10 +1210,10 @@ let g:MaxCount_BaseCmdArgs = 2
 	let l:Name = l:MyArgs[0]
 	
 	let l:ContextType = GetContextType(l:Context)
-	if (l:ContextType == g:ContextType_Global) || (l:ContextType == g:ContextType_Class) || (l:ContextType == g:ContextType_Unknown)
-		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, l:Name)
-	elseif (l:ContextType == g:ContextType_Enum)
-		return AddCode_EnumLiteral(l:BaseArgs l:Ops, l:Context, l:Name)
+	if IsEnumClassContextType(l:ContextType)
+		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, GetKey_DictType(l:BaseArgs, "ClassLinesAbove"), l:Name)
+	elseif IsEnumLiteralContextType(l:ContextType)
+		return AddCode_EnumLiteral(l:BaseArgs, l:Ops, l:Context, GetKey_DictType(l:BaseArgs, "LiteralLineAfter"), l:Name)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", a:OutContext, "")

@@ -39,6 +39,7 @@
 	return GetULine("UPROPERTY", a:Specs, a:MetaLine, a:Category)
 :endfunction
 
+
 :function! GetFixedUStructName(Name)
 	let FixedName = copy(a:Name)
 
@@ -144,6 +145,77 @@
 	endif
 :endfunction
 
+:function! GetUEnumClass_LinesAbove(IsFlags, OpsList, Name, Category)
+	let l:Lines = []
+	let l:Specs = "BlueprintType" "TODO
+	let l:MetaLine = "" "TODO: Flags support
+	:call add(l:Lines, GetUEnumLine(Specs, MetaLine, a:Category))
+	return l:Lines
+:endfunction
+
+:function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, Specs)
+	let l:MetaLine = ""
+	let l:Category = ""
+	let l:RealSpecs = l:Specs
+	if (a:Name !~# ("NoDisplayName"))
+		let l:RealSpecs .= ", DisplayName=\"".a:Name."\""
+	:endif
+	return GetUMetaLine(l:RealSpecs, l:MetaLine, l:Category)
+:endfunction
+
+"Argumetns: see the corresponding command
+:function! CmdFunc_AddCode_UEnumOrLiteral(...)
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+
+	"Checking custom args
+	if NoArg(1, l:MyArgs, "Name", 0)
+		return 0
+	endif
+
+	"Checking args
+	let l:Name = l:MyArgs[0]
+	let l:Category = GetOrDefault(l:MyArgs, 1, "Misc")
+
+	"TODO: Flags support
+	let l:IsFlags = 0
+	
+	let l:ContextType = GetContextType(l:Context)
+	let l:ClassLinesAbove = []
+	let l:LiteralLineAfter = ""
+	if IsEnumClassContextType(l:ContextType)
+		let l:ClassLinesAbove = GetUEnumClass_LinesAbove(l:IsFlags, l:OpsList, l:Name, l:Category)
+	elseif IsEnumLiteralContextType(l:ContextType)
+		let l:LiteralSpecs = ""
+		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralSpecs)
+	else
+		"Unsupported context type here
+		:call EchoContext(1, "Unsupported context for command", a:OutContext, "")
+		return 0
+	endif
+
+	"Calling the cpp-level command
+	"TODO: Update the BaseArgs: "ClassLinesAbove"
+	"TODO: Update the BaseArgs: "LiteralLinesAbove"
+	:let l:NewArgs = copy(a:000)
+	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
+	:let l:NewArgs[g:BaseArgsIndex]["LiteralLineAfter"] = l:LiteralLineAfter
+	:call call(function("CmdFunc_AddCode_EnumClassOrLiteral"), l:NewArgs)
+
+	return 1
+:endfunction
+
+"arguments for enum class
+"	Options Name [category (default to misc)]
+"arguments for enum literal
+"	Options Name
+:command! -nargs=* UEn :call CmdFunc_AddCode_UEnumOrLiteral({}, <f-args>)
 :command! -nargs=* UStru :call CmdFunc_AddCode_UClass(1, ["GENERATED_BODY()",""], <f-args>)
 
 "Add Unreal Property (with UPROPERTY or without, according to flags)
