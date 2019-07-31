@@ -156,9 +156,12 @@
 :function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, Specs)
 	let l:MetaLine = ""
 	let l:Category = ""
-	let l:RealSpecs = l:Specs
+	let l:RealSpecs = a:Specs
 	if (a:Name !~# ("NoDisplayName"))
-		let l:RealSpecs .= ", DisplayName=\"".a:Name."\""
+		if len(l:RealSpecs) > 0
+			let l:RealSpecs .= ", "
+		endif
+		let l:RealSpecs .= "DisplayName=\"".a:Name."\""
 	:endif
 	return GetUMetaLine(l:RealSpecs, l:MetaLine, l:Category)
 :endfunction
@@ -186,7 +189,7 @@
 	"TODO: Flags support
 	let l:IsFlags = 0
 	
-	let l:ContextType = GetContextType(l:Context)
+	let l:ContextType = g:ContextType_Enum "TODO: GetContextType(l:Context)
 	let l:ClassLinesAbove = []
 	let l:LiteralLineAfter = ""
 	if IsEnumClassContextType(l:ContextType)
@@ -201,8 +204,6 @@
 	endif
 
 	"Calling the cpp-level command
-	"TODO: Update the BaseArgs: "ClassLinesAbove"
-	"TODO: Update the BaseArgs: "LiteralLinesAbove"
 	:let l:NewArgs = copy(a:000)
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
 	:let l:NewArgs[g:BaseArgsIndex]["LiteralLineAfter"] = l:LiteralLineAfter
