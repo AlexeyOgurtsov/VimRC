@@ -14,9 +14,9 @@
 
 :function! CoreEcho(IsError, Line, EchoOptions)
 	if a:IsError
-		:call echoerr(a:Line)
+		echoerr(a:Line)
 	else
-		:call echo(a:Line)
+		echo(a:Line)
 	endif
 :endfunction
 
@@ -64,6 +64,43 @@
 "Cmd base arg context in the dictionary of base arguments
 :function! GetCmdBase_Context(Dict)
 	return GetKey_DictType(a:Dict, "Context")
+:endfunction
+
+"Adds one dict to another
+:function! CombineDict(Dict, OtherDict)
+	:for Key in keys(a:OtherDict)
+		let a:Dict[Key] = a:OtherDict[Key]
+	:endfor
+:endfunction
+
+:function! ClearDict(Dict)
+	:for Key in keys(a:Dict)
+		:call remove(a:Dict, Key)
+	:endfor
+:endfunction
+
+:function! ResetDict(Dict, NewValueDict)
+	:call ClearDict(a:Dict)
+	:call CombineDict(a:Dict, a:NewValueDict)
+:endfunction
+
+"If no basic args or they are of wrong type,
+"returns true and display msg if no base args provided by the command
+"NOTE! Basic args must be the FIRST (i.e.g with zero index) element 
+"of the argument list
+:function! GetBaseArgsChecked(ArgList, OutBaseArgs)
+	if(len(a:ArgList) == 0)
+		echoerr "Base args must be provided as first argument of Dictionary type (specify {} if no basic args to be passed)"
+		return 1
+	else
+		:let l:base_args = a:ArgList[0]
+		if(type(l:base_args) != v:t_dict)
+			echoerr "Base args must be of Dictionary type (specify {} if no basic args to be passed)"
+			return 1
+		endif
+		:call extend(a:OutBaseArgs, l:base_args)
+	endif
+	
 :endfunction
 
 "Append char if not empty

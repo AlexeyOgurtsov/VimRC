@@ -1133,15 +1133,50 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	endif
 :endfunction
 
-:function! CmdFunc_AddCode_EnumClassOrLiteral(...)
-	"Arguments"	
-	let l:base_args = a:000[0]
-	let l:ops = "" "TODO
+"Extract common arguments of the command, that are typically specified
+"Arguments to be extracted:
+"	BaseArgs - must be specified as the first argument of Dictionary Type
+"	Ops - must be specified as the SECOND string
+"	(according to default ExtractOptions)
+"Returns: true if failed when extacting arguments
+"Options are returned as a list, where zero element is the passed string of options
+:function! ExtractCmdArgs_TrueOnFail(ExtractOptions, ArgList, OutContext, OutBaseArgs, OutOpsList)
+	"Basic arguments"	
+	let l:no_base_args = GetBaseArgsChecked(a:ArgList, a:OutBaseArgs)
+	if l:no_base_args
+		return
+	endif
+
+	"Options
+	if len(a:ArgList) > 1
+		"Options string is specified
+		let l:OpsString = a:ArgList[1]
+	else
+		"Options string is not specified
+		let l:OpsString = ""
+	endif
 	
+	"Add options string to the list of options
+	if len(a:OutOpsList) == 0
+		:call add(a:OutOpsList, l:OpsString)
+	else
+		let a:OutOpsList[0] = l:OpsString
+	endif
+		
 	"Current context
-	let l:Context = ContextOrCurr(GetCmdBase_Context(l:base_args), l:ops)
-	:call EchoContext(0, "Context", l:Context, "")
-	"TODO
+	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
+	:call EchoContext(0, "Context", a:OutContext, "")
+:endfunction
+
+"Argumetns: see the corresponding command for arguments
+:function! CmdFunc_AddCode_EnumClassOrLiteral(...)
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
 :endfunction
 
 "Include:
