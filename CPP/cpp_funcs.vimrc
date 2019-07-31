@@ -10,6 +10,53 @@
 	return l:res
 :endfunction
 
+"*** Comment
+"Arguments:
+"	InputLines - set of lines passed initially to make comment
+"
+"	IsAsterisk - will use /**/ comment 
+"	(otherwise will use // line comment)
+:function! GetLines_CppComment(IsAsterisk, InputLines, Options)
+	"Ever if we have no lines, and skip comment behaviour is disabled,
+	"we should add comment
+	let l:ShouldSkipComment = (a:Options =~# "SkipEmptyCom;")
+	if (l:ShouldSkipComment && (len(a:InputLines) == 0))
+		return []	
+	endif
+
+	let l:SingleLine = (len(a:InputLines) <= 1) && BoolNot(a:Options =~# "MultiCom;")
+	
+	"Building comment
+	let l:res_lines = deepcopy(a:InputLines)
+	if a:IsAsterisk
+	
+		"Here building /**/ comment
+		if l:SingleLine
+			if (len(a:InputLines) == 0)
+				"We add empty line if comment is empty to force
+				"comment generation
+				:call add(l:res_lines, "")	
+			endif
+			let l:l = '/** '.l:res_lines[0].'*/'
+			let l:res_lines[0] = l:l
+		else
+			"Multiline comment here
+			:call PrependBlock(l:res_lines, "* ")
+			:call insert(l:res_lines, '/**', 0)
+			:call add(l:res_lines, '*/')
+		endif
+	else
+		"Here building // comment
+		if (len(a:InputLines) == 0)
+			"We add empty line if comment is empty to force
+			"comment generation
+			:call add(l:res_lines, "")	
+		endif
+		:call PrependBlock(l:res_lines, '// ')
+	endif
+	return l:res_lines
+:endfunction
+
 "*** #Include directive
 "Include header:
 "-Appends .h automatically (if not specified)

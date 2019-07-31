@@ -87,6 +87,14 @@
 	:endwhile
 :endfunction
 
+:function! PrependBlock(Lines, PrependStr)
+	let l:i = 0
+	while l:i < len(a:Lines)
+"		a:Lines[l:i] = a:PrependStr.a:Lines[l:i]
+"		let l:i += 1
+	endwhile
+:endfunction
+
 "function to be used for providing Not-yet-impl statements
 :function! GetLines_NotImplFunc_Default(ClassName, TemplParams, FuncName, Msg, OptionString)
 	let l:lines = []
