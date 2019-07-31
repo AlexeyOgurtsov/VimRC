@@ -1172,7 +1172,14 @@ let g:MaxCount_BaseCmdArgs = 2
 		
 	"Current context
 	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
-	:call EchoContext(0, "Context", a:OutContext, "")
+:endfunction
+
+:function! AddCode_EnumClass(BaseArgs, Ops, Context, Name)
+	"TODO
+:endfunction
+
+:function! AddCode_EnumLiteral(BaseArgs, Ops, Context, Name)
+	"TODO
 :endfunction
 
 "Argumetns: see the corresponding command for arguments
@@ -1194,7 +1201,16 @@ let g:MaxCount_BaseCmdArgs = 2
 	"Checking args
 	let l:Name = l:MyArgs[0]
 	
-	"TODO: Perform command
+	let l:ContextType = GetContextType(l:Context)
+	if (l:ContextType == g:ContextType_Global) || (l:ContextType == g:ContextType_Class) || (l:ContextType == g:ContextType_Unknown)
+		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, l:Name)
+	elseif (l:ContextType == g:ContextType_Enum)
+		return AddCode_EnumLiteral(l:BaseArgs l:Ops, l:Context, l:Name)
+	else
+		"Unsupported context type here
+		:call EchoContext(1, "Unsupported context for command", a:OutContext, "")
+		return 0
+	endif
 
 	return 1
 :endfunction

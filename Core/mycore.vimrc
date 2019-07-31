@@ -295,16 +295,26 @@
 	return GetBufLinesRangeAt(l:startLineIdx, l:endLineIdx, a:Options)
 :endfunction
 
+"Context types
+let g:ContextType_Unknown = 0 "We do NOT know where we are now
+let g:ContextType_Enum = 1 "Inside enum or enum class etc.
+let g:ContextType_Class = 2 "Inside class or struct.
+let g:ContextType_Function = 3 "Inside function
+let g:ContextType_Global = 4 "Inside global or namespace 
+let g:ContextType_NUM = 5
+
 
 " Returns Core context with the given line index
 " Members:
 " Line at which context was taken
 " WARNING!!! Use GetContextAt whenever possible!)
 let g:Context_Line = "Line"
+let g:Context_Type = "ContextType"
 :function! GetCoreContextAt(LineIndex)
 	let l:res = {}
 	"Line
 	let l:res[g:Context_Line] = a:LineIndex
+	let l:res[g:Context_Type] = g:ContextType_Unknown "TODO
 	"TODO
 	return l:res
 :endfunction
@@ -317,6 +327,10 @@ let g:Context_Line = "Line"
 
 :function! GetContextLine(Context)
 	return a:Context[g:Context_Line]
+:endfunction
+
+:function! GetContextType(Context)
+	return a:Context[g:Context_Type]
 :endfunction
 
 :function! GetCoreEchoContextLines(IsError, Msg, Context, EchoOptions)
