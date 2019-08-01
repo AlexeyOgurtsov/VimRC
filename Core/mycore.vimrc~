@@ -34,6 +34,20 @@
 	:endif
 :endfunction
 
+"Returns: Count of lines that satisfy the given pattern
+:function! CountLinesByPattern(Lines, Pattern)
+	let l:count = 0
+	let i = 0
+	while i < len(a:Lines)
+		if (a:Lines[i] =~# a:Pattern)
+			let l:count += 1
+		endif
+
+		let i += 1
+	endwhile
+	return l:count
+:endfunction
+
 "Returns: Index of the given line to search
 :function! FindFirstFrom(StartLineIndex, LineToSearch)
 	let i = a:StartLineIndex
@@ -57,6 +71,42 @@
 		let i += 1
 	endwhile
 	return len(a:Line)
+:endfunction
+
+"Checks if the given line is meaningful
+"WARNING! Does not automatically checks comments!
+:function! IsCoreLineMeaningful(Line)
+	return a:Line =~ '\a\+'
+:endfunction
+
+"Returns true if the given set of lines contains at least one meaningful
+"character
+"WARNING! Override in the corresponding module to support comments!
+:function! IsLineMeaningful(Line)
+	return IsCoreLineMeaningful(a:Line)
+:endfunction
+
+"Returns true if the given set of lines contains at least one meaningful line
+"-Not whitespaced;
+"-Not empty line
+"WARNING!!! Comments are NOT recognized automatically!
+:function! AreCoreLinesMeaningful(Lines)
+	let i = 0
+	:while i < len(a:Lines)	
+		let line = a:Lines[i]
+		if IsLineMeaningful(line)
+			return 1
+		endif
+		let i += 1
+	:endwhile
+	return 0
+:endfunction
+
+
+"Returns true if the given set of lines contains at least one meaningful line
+"WARNING! Override in the corresponding module to support comments!
+:function! AreLinesMeaningful(Lines)
+	return AreCoreLinesMeaningful(a:Lines)	
 :endfunction
 
 :function! UpdateStringOpenState(OpenState, Line, OpenStr, CloseStr)
@@ -137,6 +187,12 @@
 	:for Key in keys(a:OtherDict)
 		let a:Dict[Key] = a:OtherDict[Key]
 	:endfor
+:endfunction
+
+:function! ClearList(List)
+	:while len(a:List) > 0
+		:call remove(a:List, 0)
+	:endwhile
 :endfunction
 
 :function! ClearDict(Dict)
@@ -399,9 +455,15 @@ let g:Context_OpenBraceLine = "ContextOpenBraceLine"
 "Line RIGHT BEFORE the } line
 "For global context - last line of the file
 let g:Context_EndLine = "ContextEndLine"
+"Lines inside body
+"All lines right after "{" abd just before "}"
+"(NOT determined for Unknown or GLOBAL!!!)
+let g:Context_LinesInsideBody = "ContextLinesInsideBody"
 "Indentation param of the heade line (for global - indentation of the inner
 "NAMESPACE is returned)
 let g:Context_IndentationParam = "ContextIndentationParam"
+"Enums
+let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 :function! GetCoreContextAt(LineIndex)
 	let l:res = {}
 	"Line
@@ -409,10 +471,13 @@ let g:Context_IndentationParam = "ContextIndentationParam"
 	let l:res[g:Context_Type] = g:ContextType_Unknown "TODO
 
 	let l:res[g:Context_StartLine] = 0
-	let l:res[g:Contet_OpenBraceLine] = 0
+	let l:res[g:Context_OpenBraceLine] = 0
 	let l:res[g:Context_EndLine] = line('$')
+	let l:res[g:Context_LinesInsideBody] = []
 
 	let l:res[g:Context_IndentationParam] = 0
+
+	let l:res[g:Context_NumEnumLiterals] = 0
 	"TODO
 	return l:res
 :endfunction
@@ -439,12 +504,20 @@ let g:Context_IndentationParam = "ContextIndentationParam"
 	return a:Context[g:Context_EndLine]
 :endfunction
 
+:function! GetContextLinesInsideBody(Context)
+	return a:Context[g:Context_LinesInsideBody]
+:endfunction
+
 :function! GetContextType(Context)
 	return a:Context[g:Context_Type]
 :endfunction
 
 :function! GetContextIndentationParam(Context)
 	return a:Context[g:Context_IndentationParam]
+:endfunction
+
+:function! GetContextNumEnumLiterals(Context)
+	return a:Context[g:Context_NumEnumLiterals]
 :endfunction
 
 :function! GetCoreEchoContextLines(IsError, Msg, Context, EchoOptions)

@@ -26,6 +26,66 @@
 	return l:IsClassHeader
 :endfunction
 
+:function! IsLineMeaningful(Line)
+	"TODO: Override to remove comments
+	return IsCoreLineMeaningful(a:Line)
+:endfunction
+
+:function! AreLinesMeaningful(Lines)
+	"TODO: Override to remove comments
+	return AreCoreLinesMeaningful(a:Lines)
+:endfunction
+
+:function! CalculateNumEnumLiterals(OpenBraceLineIndex, Lines)
+	:if BoolNot(AreLinesMeaningful(a:Lines) )
+		return 0	
+	:endif
+
+	let CountByPattern = CountLinesByPattern(a:Lines, '\s*\,\s*')
+	return CountByPattern + 1 
+
+:endfunction
+
+:function! ComputeLinesInsideContextBody(OpenBraceLineIndex, ContextType, LinesInsideBody)
+	let Lines = []
+	:call ClearList(a:LinesInsideBody)
+	
+	let line_index = a:OpenBraceLineIndex
+	let EndBracketFound = 0
+	
+	let NumOpenedBrackets = 0
+	:while (line_index <= line('$')) && BoolNot(EndBracketFound)
+		let l = getline(line_index)
+		"echo "line_index=".line_index." ;NumOpenedBrackets=".NumOpenedBrackets
+
+		let char_i = 0
+		while char_i < len(l)
+			if stridx(l, "{", char_i) == char_i
+				let NumOpenedBrackets += 1
+			elseif stridx(l, "}", char_i) == char_i
+				let NumOpenedBrackets -= 1
+			endif
+			let char_i += 1
+		endwhile
+
+		"We must check line indices from after-first line only
+		if NumOpenedBrackets == 0
+			let EndBracketFound = 1
+		else
+			let line_index += 1
+			"echo "NEXT: line_index=".line_index." ;NumOpenedBrackets=".NumOpenedBrackets
+			let l = getline(line_index)
+			:call add(a:LinesInsideBody, l)
+		endif
+	:endwhile
+
+	if (len(a:LinesInsideBody) > 0)
+		:call remove(a:LinesInsideBody, len(a:LinesInsideBody) - 1)
+	endif
+
+	return Lines
+:endfunction
+
 "Determine cpp context lines and its type
 :function! ExtractCppContextLines(OutCppContext)
 	let l:ContextType = g:ContextType_Unknown
@@ -72,10 +132,27 @@
 
 	if IsContextHeaderFound
 		let a:OutCppContext[g:Context_StartLine] = l:LineIndex
-		let a:OutCppContext[g:Context_OpenBraceLine] = FindFirstFrom(l:LineIndex, '{')
-		let a:OutCppContext[g:Context_EndLine] = line('$') "TODO
 
-		let a:OutCppContext[g:Context_IndentationParam] = GetLineIndentationParam(a:OutCppContext[g:Context_StartLine])
+		let OpenBraceLineIndex = FindFirstFrom(l:LineIndex, '{')
+
+		"Lines inside body (not including { and } braces )
+		let LinesInsideBody = []
+		:call ComputeLinesInsideContextBody(OpenBraceLineIndex, l:ContextType, LinesInsideBody)
+		let a:OutCppContext[g:Context_LinesInsideBody] = LinesInsideBody
+
+		"Compute end line index based on the lines inside body
+		let a:OutCppContext[g:Context_OpenBraceLine] = OpenBraceLineIndex
+		let a:OutCppContext[g:Context_EndLine] = OpenBraceLineIndex + len(LinesInsideBody)
+
+		let a:OutCppContext[g:Context_IndentationParam] = GetLineIndentationParam(l:LineIndex)
+
+		if l:ContextType == g:ContextType_Enum
+			let a:OutCppContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(OpenBraceLineIndex, LinesInsideBody)
+		elseif l:ContextType == g:ContextType_Class
+			"TODO
+		elseif l:ContextType == g:ContextType_Function
+			"Other type
+		endif
 	else
 		"No context header found, so we are inside the global
 		let a:OutCppContext[g:Context_StartLine] = 0
@@ -85,9 +162,9 @@
 		let a:OutCppContext[g:Context_IndentationParam] = 0 "TODO: Calculate based on the current namespace
 	endif
 
+
 	"TODO: Indentation param
 	let a:OutCppContext[g:Context_IndentationParam] = 0
-	
 	let a:OutCppContext[g:Context_Type] = l:ContextType
 	return l:ContextType
 :endfunction
