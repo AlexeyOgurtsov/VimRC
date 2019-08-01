@@ -153,6 +153,14 @@
 	return l:Lines
 :endfunction
 
+:function! GetUEnumClass_LinesBelow(IsFlags, OpsList, Name, Category)
+	let l:Lines = []
+	if a:IsFlags
+		:call add(l:Lines, 'ENUM_CLASS_FLAGS('.a:Name.');')
+	endif
+	return l:Lines
+:endfunction
+
 :function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, Specs)
 	let l:MetaLine = ""
 	let l:Category = ""
@@ -186,26 +194,28 @@
 	let l:Name = l:MyArgs[0]
 	let l:Category = GetOrDefault(l:MyArgs, 1, "Misc")
 
-	"TODO: Flags support
-	let l:IsFlags = 0
+	let l:IsFlags = (l:Ops =~# "Flags;")
 	
 	let l:ContextType = GetContextType(l:Context)
 	let l:ClassLinesAbove = []
+	let l:ClassLinesBelow = []
 	let l:LiteralLineAfter = ""
 	if IsEnumClassContextType(l:ContextType)
 		let l:ClassLinesAbove = GetUEnumClass_LinesAbove(l:IsFlags, l:OpsList, l:Name, l:Category)
+		let l:ClassLinesBelow = GetUEnumClass_LinesBelow(l:IsFlags, l:OpsList, l:Name, l:Category)
 	elseif IsEnumLiteralContextType(l:ContextType)
 		let l:LiteralSpecs = ""
 		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralSpecs)
 	else
 		"Unsupported context type here
-		:call EchoContext(1, "Unsupported context for command", a:OutContext, "")
+		:call EchoContext(1, "Unsupported context for command", l:Context, "")
 		return 0
 	endif
 
 	"Calling the cpp-level command
 	:let l:NewArgs = copy(a:000)
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
+	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesBelow"] = l:ClassLinesBelow
 	:let l:NewArgs[g:BaseArgsIndex]["LiteralLineAfter"] = l:LiteralLineAfter
 	:call call(function("CmdFunc_AddCode_EnumClassOrLiteral"), l:NewArgs)
 

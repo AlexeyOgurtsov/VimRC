@@ -529,7 +529,21 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 	let l:header_line .= a:Msg
 	:call add(l:lines, l:header_line)
 	"Context lines
-	:call add(l:lines, "line: ".GetContextLine(a:Context))
+	:call add(l:lines, "Line: ".GetContextLine(a:Context))
+	let ContextType = GetContextType(a:Context)
+	:call add(l:lines, "ContextType: ".ContextType)
+	if (ContextType == g:ContextType_Unknown)
+		:call add(l:lines, "(Unknown)")
+	elseif (ContextType == g:ContextType_Enum)
+		:call add(l:lines, "(Enum)")
+	elseif (ContextType == g:ContextType_Class)
+		:call add(l:lines, "(Class)")
+	elseif (ContextType == g:ContextType_Function)
+		:call add(l:lines, "(Function)")
+	else
+		:call add(l:lines, "(Wrong context value)")
+	endif
+	:call add(l:lines, "IndentationParam: ".GetContextIndentationParam(a:Context))
 	return l:lines
 :endfunction
 

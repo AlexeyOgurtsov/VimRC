@@ -131,9 +131,10 @@
 	endwhile
 
 	if IsContextHeaderFound
-		let a:OutCppContext[g:Context_StartLine] = l:LineIndex
+		let l:StartLine = (l:LineIndex + 1)
+		let a:OutCppContext[g:Context_StartLine] = l:StartLine
 
-		let OpenBraceLineIndex = FindFirstFrom(l:LineIndex, '{')
+		let OpenBraceLineIndex = FindFirstFrom(l:StartLine, '{')
 
 		"Lines inside body (not including { and } braces )
 		let LinesInsideBody = []
@@ -144,7 +145,8 @@
 		let a:OutCppContext[g:Context_OpenBraceLine] = OpenBraceLineIndex
 		let a:OutCppContext[g:Context_EndLine] = OpenBraceLineIndex + len(LinesInsideBody)
 
-		let a:OutCppContext[g:Context_IndentationParam] = GetLineIndentationParam(l:LineIndex)
+		"echo "Debug: StartLine=".l:StartLine." LineIndentationParam=".GetLineIndentationParam(getline(l:StartLine))
+		let a:OutCppContext[g:Context_IndentationParam] = GetLineIndentationParam(getline(l:StartLine))
 
 		if l:ContextType == g:ContextType_Enum
 			let a:OutCppContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(OpenBraceLineIndex, LinesInsideBody)
@@ -1349,7 +1351,7 @@ let g:MaxCount_BaseCmdArgs = 2
 	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
 :endfunction
 
-:function! GetLines_EnumClass(BaseArgs, Ops, Context, LinesAbove, Name)
+:function! GetLines_EnumClass(BaseArgs, Ops, Context, LinesAbove, LinesBelow, Name)
 	let l:lines = []
 	"Add comment
 	let l:comment_lines = GetLines_EnumClassComment_IfShould(a:Name, a:Ops)
@@ -1363,8 +1365,9 @@ let g:MaxCount_BaseCmdArgs = 2
 	:endif
 	:call add(l:lines, l:header_line)
 	:call add(l:lines, "{")
-	"TODO: Add defaults lines for flags
 	:call add(l:lines, "};")
+	"Add lines below
+	:call extend(l:lines, a:LinesBelow)
 	return l:lines
 :endfunction
 
@@ -1391,15 +1394,18 @@ let g:MaxCount_BaseCmdArgs = 2
 	return l:lines
 :endfunction
 
-:function! AddCode_EnumClass(BaseArgs, Ops, Context, LinesAbove, Name)
-	let l:lines = GetLines_EnumClass( a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:Name)
+:function! AddCode_EnumClass(BaseArgs, Ops, Context, LinesAbove, LinesBelow, Name)
+	let l:lines = GetLines_EnumClass( a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:LinesBelow, a:Name)
 	return AddCodeAt(a:Context, l:lines, [], a:Ops)
 :endfunction
 
 :function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name)
 	let l:ShouldAddComma = GetContextNumEnumLiterals(a:Context) > 0
 	let l:lines = GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name)
-	let l:indent_level = 1 "TODO
+	let l:indent_level = GetContextIndentationParam(a:Context) + 1 "TODO: Debug
+	":call EchoContext(0, "Debug context", a:Context, "")
+	"echo "AddCode_EnumLiteral: Debug: GetContextIndentationParam(a:Context): ".GetContextIndentationParam(a:Context)
+	"echo "AddCode_EnumLiteral: Debug: IndentLevel: ".l:indent_level
 	:call IdentBlock(l:lines, l:indent_level)
 	return AddCodeAt(a:Context, l:lines, [], a:Ops)
 :endfunction
@@ -1433,13 +1439,13 @@ let g:MaxCount_BaseCmdArgs = 2
 	
 	let l:ContextType = GetContextType(l:Context)
 	if IsEnumClassContextType(l:ContextType)
-		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, GetKey_ListType(l:BaseArgs, "ClassLinesAbove"), l:Name)
+		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, GetKey_ListType(l:BaseArgs, "ClassLinesAbove"), GetKey_ListType(l:BaseArgs, "ClassLinesBelow"), l:Name)
 	elseif IsEnumLiteralContextType(l:ContextType)
 		let l:LiteralLineAfter = GetKey_StringType(l:BaseArgs, "LiteralLineAfter")
 		return AddCode_EnumLiteral(l:BaseArgs, l:Ops, l:Context, l:LiteralLineAfter, l:Name)
 	else
 		"Unsupported context type here
-		:call EchoContext(1, "Unsupported context for command", a:OutContext, "")
+		:call EchoContext(1, "Unsupported context for command", l:Context, "")
 		return 0
 	endif
 
