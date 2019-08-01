@@ -90,8 +90,8 @@
 	let l:new_args[g:AddCode_CppClass_ClassNameArgIndex] = GetFixedUStructName(l:new_args[g:AddCode_CppClass_ClassNameArgIndex])
 	"ULines
 	let ULines = [GetUStructLine("BlueprintType", "", "Misc")]
-	:call AddIndentedCodeLines(ULines)
-	:call JumpAfter(ULines)
+	:call AddIndentedCodeLines(ULines, "")
+	":call JumpAfter(ULines) "Automatically jumps now due to options
 	"Class itself
 	:call call(function("CmdFunc_AddCode_CppClass_Default"), new_args)
 :endfunction

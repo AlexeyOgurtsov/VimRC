@@ -253,17 +253,27 @@
 
 "Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
 "inside namespace, etc.)
-:function! AddIndentedCodeLinesAt(LineNumber, Lines)
+"-DOES automaticall jumps after end of the inserted block by itself
+:function! AddIndentedCodeLinesAt(LineNumber, Lines, Options)
 	let l:IndentedLines = deepcopy(a:Lines)
 	"TODO: Indent block if necessary
-	:call append(a:LineNumber, l:IndentedLines)
+	if(a:Options =~# "PrepLineBefore;")
+		:call insert(l:IndentedLines, "", 0)
+	endif
+	if(a:Options =~# "PrepLineAfter;")
+		:call add(l:IndentedLines, "")
+	endif
+	:call append(a:LineNumber, l:IndentedLines, a:Options)
+	if(a:Options !~# "LockCur;")
+		:call JumpAfterAt(a:LineNumber, a:Lines)
+	endif
 :endfunction
 
 "Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
 "inside namespace, etc.)
-:function! AddIndentedCodeLines(Lines)
+:function! AddIndentedCodeLines(Lines, Options)
 	let l:LineNumber = line('.')
-	:call AddIndentedCodeLinesAt(l:LineNumber, a:Lines)
+	:call AddIndentedCodeLinesAt(l:LineNumber, a:Lines, a:Options)
 :endfunction
 
 "Jumps cursor right after the inserted lines as if the given lines where inserted at the given position of
@@ -396,7 +406,7 @@ let g:Context_Type = "ContextType"
 " - based on the given public context (lines, buffer etc.) and options
 " - Automatically should perform identation (for example, when inside namespace
 " etc.)
-" - Does NOT automatically jumps cursor at the end!
+" - Do automatically jumps cursor at the end (if not specified "LockCur")!
 " (because some commands need that cursor is jumped elsewhere)
 " Returns:
 " 	Index of line, where public lines where inserted
@@ -407,7 +417,8 @@ let g:Context_Type = "ContextType"
 	"Adding public code
 	let l:BestContext = GetBestContext(a:Context)
 	let l:PublicLineNumber = GetContextLine(l:BestContext)
-	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines)
+
+	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines, a:Options)
 	"TODO: Add private lines
 	return l:PublicLineNumber
 :endfunction
