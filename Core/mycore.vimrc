@@ -394,6 +394,7 @@ let g:Context_Type = "ContextType"
 " line above!
 " For global context - zero line 
 let g:Context_StartLine = "ContextStartLine"
+let g:Context_OpenBraceLine = "ContextOpenBraceLine"
 "End line number of the inner context entity (class, enum, function etc.)
 "Line RIGHT BEFORE the } line
 "For global context - last line of the file
@@ -408,6 +409,7 @@ let g:Context_IndentationParam = "ContextIndentationParam"
 	let l:res[g:Context_Type] = g:ContextType_Unknown "TODO
 
 	let l:res[g:Context_StartLine] = 0
+	let l:res[g:Context_OpenBraceLine] = 0
 	let l:res[g:Context_EndLine] = line('$')
 
 	let l:res[g:Context_IndentationParam] = 0
@@ -427,6 +429,10 @@ let g:Context_IndentationParam = "ContextIndentationParam"
 
 :function! GetContextStartLine(Context)
 	return a:Context[g:Context_StartLine]
+:endfunction
+
+:function! GetContextOpenBraceLine(Context)
+	return a:Context[g:Context_OpenBraceLine]
 :endfunction
 
 :function! GetContextEndLine(Context)
