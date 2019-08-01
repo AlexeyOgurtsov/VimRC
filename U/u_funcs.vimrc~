@@ -189,7 +189,7 @@
 	"TODO: Flags support
 	let l:IsFlags = 0
 	
-	let l:ContextType = g:ContextType_Enum "TODO: GetContextType(l:Context)
+	let l:ContextType = GetContextType(l:Context)
 	let l:ClassLinesAbove = []
 	let l:LiteralLineAfter = ""
 	if IsEnumClassContextType(l:ContextType)

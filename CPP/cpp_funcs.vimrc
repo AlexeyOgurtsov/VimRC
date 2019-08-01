@@ -1265,7 +1265,7 @@ let g:MaxCount_BaseCmdArgs = 2
 	"Checking args
 	let l:Name = l:MyArgs[0]
 	
-	let l:ContextType = g:ContextType_Enum "TODO: GetContextType(l:Context)
+	let l:ContextType = GetContextType(l:Context)
 	if IsEnumClassContextType(l:ContextType)
 		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, GetKey_ListType(l:BaseArgs, "ClassLinesAbove"), l:Name)
 	elseif IsEnumLiteralContextType(l:ContextType)
