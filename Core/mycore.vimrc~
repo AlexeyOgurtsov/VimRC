@@ -46,6 +46,19 @@
 	return -1
 :endfunction
 
+"Calculate the identation from the given line
+"NOTE: Right now identation param is number of tabs
+:function! GetLineIndentationParam(Line)
+	let i = 0
+	while i < len(a:Line)
+		if(strpart(a:Line, i, i) !~# "\t" )
+			return i
+		endif
+		let i += 1
+	endwhile
+	return len(a:Line)
+:endfunction
+
 :function! UpdateStringOpenState(OpenState, Line, OpenStr, CloseStr)
 	let l:CountToClose = a:OpenState["CountToOpen"]
 	let l:IsInitiallyOpened = a:OpenState["IsInitiallyOpened"]
