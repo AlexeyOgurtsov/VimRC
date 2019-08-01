@@ -145,8 +145,9 @@
 		let a:OutCppContext[g:Context_OpenBraceLine] = OpenBraceLineIndex
 		let a:OutCppContext[g:Context_EndLine] = OpenBraceLineIndex + len(LinesInsideBody)
 
-		"echo "Debug: StartLine=".l:StartLine." LineIndentationParam=".GetLineIndentationParam(getline(l:StartLine))
 		let a:OutCppContext[g:Context_IndentationParam] = GetLineIndentationParam(getline(l:StartLine))
+		"echo "Debug: StartLine=".l:StartLine." LineIndentationParam=".GetLineIndentationParam(getline(l:StartLine))
+		"echo "Debug: StartLine=".l:StartLine." OutCppContext[IndentationParam]=".a:OutCppContext[g:Context_IndentationParam]
 
 		if l:ContextType == g:ContextType_Enum
 			let a:OutCppContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(OpenBraceLineIndex, LinesInsideBody)
@@ -164,9 +165,6 @@
 		let a:OutCppContext[g:Context_IndentationParam] = 0 "TODO: Calculate based on the current namespace
 	endif
 
-
-	"TODO: Indentation param
-	let a:OutCppContext[g:Context_IndentationParam] = 0
 	let a:OutCppContext[g:Context_Type] = l:ContextType
 	return l:ContextType
 :endfunction
@@ -1428,6 +1426,8 @@ let g:MaxCount_BaseCmdArgs = 2
 		return 0
 	endif
 	let l:Ops = l:OpsList[0]
+
+	":call EchoContext(0, "Debug context: AddCode_EnumClassOrLiteral", l:Context, "")
 
 	"Checking custom args
 	if NoArg(1, l:MyArgs, "Name", 0)
