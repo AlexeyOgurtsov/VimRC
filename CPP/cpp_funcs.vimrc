@@ -73,10 +73,14 @@
 	if IsContextHeaderFound
 		let a:OutCppContext[g:Context_StartLine] = l:LineIndex
 		let a:OutCppContext[g:Context_EndLine] = line('$') "TODO
+
+		let a:OutCppContext[g:Context_IndentationParam] = GetLineIndentationParam(a:OutCppContext[g:Context_StartLine])
 	else
 		"No context header found, so we are inside the global
 		let a:OutCppContext[g:Context_StartLine] = 0
 		let a:OutCppContext[g:Context_EndLine] = line('$')
+
+		let a:OutCppContext[g:Context_IndentationParam] = 0 "TODO: Calculate based on the current namespace
 	endif
 
 	"TODO: Indentation param
