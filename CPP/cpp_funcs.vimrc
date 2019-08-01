@@ -16,7 +16,8 @@
 
 "Determines, whether the given line string is cpp function header
 :function! IsCppFunctionHeaderLine(Line, OutDecl)
-	"TODO
+	let l:IsFunction = (a:Line =~# '^\s*\(.*\)\(\w*\)\s*(.*)\s*\(.*\)\s*{*\s*$')
+	return l:IsFunction
 :endfunction
 
 "Determines, whether the given line string is cpp class/struct header
