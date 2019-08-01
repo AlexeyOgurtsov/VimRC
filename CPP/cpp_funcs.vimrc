@@ -21,7 +21,8 @@
 
 "Determines, whether the given line string is cpp class/struct header
 :function! IsCppClassHeaderLine(Line, OutDecl)
-	"TODO
+	let l:IsClass = (a:Line =~# '^\s*\(class\|struct\)\s*\(\w\+\)\s*\(\|:\s*\w\+\s*\(\w\+\)\)\s*{*\s*$')
+	return l:IsClass
 :endfunction
 
 "Determines, whether the given line string is cpp enum class header
