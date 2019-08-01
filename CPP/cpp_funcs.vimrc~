@@ -14,6 +14,22 @@
 	return GetCppContextAt(a:LineIndex)
 :endfunction
 
+"Determines, whether the given line string is cpp function header
+:function! IsCppFunctionHeaderLine(Line, OutDecl)
+	"TODO
+:endfunction
+
+"Determines, whether the given line string is cpp class/struct header
+:function! IsCppClassHeaderLine(Line, OutDecl)
+	"TODO
+:endfunction
+
+"Determines, whether the given line string is cpp enum class header
+:function! IsCppEnumClassHeaderLine(Line, OutDecl)
+	let l:IsClassHeader = (a:Line =~# '^\s*enum\s*\(class\|\)\s*\(\w\+\)\s*\(\|:\s*\(\w\+\)\)\s*\w*\s*$')
+	return l:IsClassHeader
+:endfunction
+
 "*** Comment
 "Arguments:
 "	InputLines - set of lines passed initially to make comment
