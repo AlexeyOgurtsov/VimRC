@@ -1,3 +1,11 @@
+
+/** N*/
+enum class N
+{
+	/** N*/
+	N UMETA(DisplayName="Test")
+};
+
 class a
 {
 	a func () const

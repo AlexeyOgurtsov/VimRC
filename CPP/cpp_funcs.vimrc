@@ -111,7 +111,8 @@
 		let InitiallyOpened = OpenState["IsInitiallyOpened"]
 
 		let l:IsReallyOpened = (InitiallyOpened && (BracketsToOpen <= 0)) || (LineIndex == l:ContextLine) 
-		if ( l:IsReallyOpened )
+		let l:OpenBracketExists = FindFirstFromAndBefore(LineIndex, "{", "}")
+		if ( l:IsReallyOpened && l:OpenBracketExists )
 			let l:Decl = {}
 			if (IsCppEnumClassHeaderLine(CurrLine, l:Decl))
 				let l:ContextType = g:ContextType_Enum

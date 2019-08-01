@@ -60,6 +60,26 @@
 	return -1
 :endfunction
 
+"Tries to search the given line, so that it placed Before the given one
+"Returns: 
+"	Index of the given line to search, 
+"	Index of the given line, if the After line does NOT exist
+"	-1 if After placed before or does NOT exist
+:function! FindFirstFromAndBefore(StartLineIndex, First, After)
+	let l:BeforeIndex = FindFirstFrom(a:StartLineIndex, a:First)
+	if (l:BeforeIndex < 0 )
+	       	return -1 
+	endif
+	let l:AfterIndex = FindFirstFrom(a:StartLineIndex, a:After)
+	if (l:AfterIndex < 0)
+		return l:BeforeIndex
+	endif
+	if(l:BeforeIndex == l:AfterIndex)
+		"TODO: Not impl: check order within the line itself
+	endif
+	return l:BeforeIndex <= l:AfterIndex
+:endfunction
+
 "Calculate the identation from the given line
 "NOTE: Right now identation param is number of tabs
 :function! GetLineIndentationParam(Line)
