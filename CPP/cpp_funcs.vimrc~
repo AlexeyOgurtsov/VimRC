@@ -1401,7 +1401,7 @@ let g:MaxCount_BaseCmdArgs = 2
 :function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name)
 	let l:ShouldAddComma = GetContextNumEnumLiterals(a:Context) > 0
 	let l:lines = GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name)
-	let l:indent_level = GetContextIndentationParam(a:Context) + 1 "TODO: Debug
+	let l:indent_level = 1 "NOTE: It's right (1), because the other part will be computed automaticall by AddCode functions!
 	":call EchoContext(0, "Debug context", a:Context, "")
 	"echo "AddCode_EnumLiteral: Debug: GetContextIndentationParam(a:Context): ".GetContextIndentationParam(a:Context)
 	"echo "AddCode_EnumLiteral: Debug: IndentLevel: ".l:indent_level

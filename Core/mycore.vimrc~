@@ -66,11 +66,11 @@
 "	Index of the given line, if the After line does NOT exist
 "	-1 if After placed before or does NOT exist
 :function! FindFirstFromAndBefore(StartLineIndex, First, After)
-	let l:BeforeIndex = FirstFirstFrom(a:StartLineIndex, a:First)
+	let l:BeforeIndex = FindFirstFrom(a:StartLineIndex, a:First)
 	if (l:BeforeIndex < 0 )
 	       	return -1 
 	endif
-	let l:AfterIndex = FirstFirstFrom(a:StartLineIndex, a:After)
+	let l:AfterIndex = FindFirstFrom(a:StartLineIndex, a:After)
 	if (l:AfterIndex < 0)
 		return l:BeforeIndex
 	endif
@@ -377,30 +377,6 @@
 	return l:lines	
 :endfunction
 
-"Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
-"inside namespace, etc.)
-"-DOES automaticall jumps after end of the inserted block by itself
-:function! AddIndentedCodeLinesAt(LineNumber, Lines, Options)
-	let l:IndentedLines = deepcopy(a:Lines)
-	"TODO: Indent block if necessary
-	if(a:Options =~# "PrepLineBefore;")
-		:call insert(l:IndentedLines, "", 0)
-	endif
-	if(a:Options =~# "PrepLineAfter;")
-		:call add(l:IndentedLines, "")
-	endif
-	:call append(a:LineNumber, l:IndentedLines)
-	if(a:Options !~# "LockCur;")
-		:call JumpAfterAt(a:LineNumber, a:Lines)
-	endif
-:endfunction
-
-"Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
-"inside namespace, etc.)
-:function! AddIndentedCodeLines(Lines, Options)
-	let l:LineNumber = line('.')
-	:call AddIndentedCodeLinesAt(l:LineNumber, a:Lines, a:Options)
-:endfunction
 
 "Jumps cursor right after the inserted lines as if the given lines where inserted at the given position of
 "the cursor
@@ -596,6 +572,40 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 	return GetBestContext(GetCurrContext(a:Options))
 :endfunction
 
+"Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
+"inside namespace, etc.)
+"-DOES automaticall jumps after end of the inserted block by itself
+:function! AddIndentedCodeLinesAt(Context, Lines, Options)
+	let l:LineNumber = GetContextLine(a:Context)
+	let l:IndentedLines = deepcopy(a:Lines)
+	if(a:Options =~# "PrepLineBefore;")
+		:call insert(l:IndentedLines, "", 0)
+	endif
+	if(a:Options =~# "PrepLineAfter;")
+		:call add(l:IndentedLines, "")
+	endif
+	if(a:Options !~# "NoDefaultIndent;")
+		let IndentParam = GetContextIndentationParam(a:Context)
+		"By default we ident on the level of the context PLUS one
+		"However, when a special argument is given, we indent on level
+		"of the context
+		if (a:Options !~# "NoPlusOneIndent;")
+			let IndentParam .= 1
+		endif
+		:call IdentBlock(l:IndentedLines, IndentParam)
+	endif
+	:call append(l:LineNumber, l:IndentedLines)
+	if(a:Options !~# "LockCur;")
+		:call JumpAfterAt(l:LineNumber, a:Lines)
+	endif
+:endfunction
+
+"Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
+"inside namespace, etc.)
+:function! AddIndentedCodeLines(Lines, Options)
+	let l:Context = CurrOrContext({}, a:Options)
+	:call AddIndentedCodeLinesAt(l:LineNumber, a:Lines, a:Options)
+:endfunction
 "Append both declaration and definition 
 " - based on the given public context (lines, buffer etc.) and options
 " - Automatically should perform identation (for example, when inside namespace
@@ -606,13 +616,12 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 " 	Index of line, where public lines where inserted
 
 :function! AddCodeAt(Context, PublicLines, PrivateLines, Options)
+	let l:PublicLineNumber = GetContextLine(a:Context)
 	let l:AddPublic = (a:Options !~ "NoPublic;")
 	let l:AddPriv = (a:Options !~ "NoPriv;") 
 	"Adding public code
-	let l:BestContext = GetBestContext(a:Context)
-	let l:PublicLineNumber = GetContextLine(l:BestContext)
-
-	:call AddIndentedCodeLinesAt(l:PublicLineNumber, a:PublicLines, a:Options)
+	let l:BestContext = ContextOrCurr(a:Context, a:Options)
+	:call AddIndentedCodeLinesAt(l:BestContext, a:PublicLines, a:Options)
 	"TODO: Add private lines
 	return l:PublicLineNumber
 :endfunction
