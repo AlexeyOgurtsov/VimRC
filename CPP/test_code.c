@@ -1,0 +1,44 @@
+class a
+{
+	a func () const
+       	{
+		a = 1
+		b = 2
+	}
+
+	enum class b
+	{
+		lit 1,
+		lit 2
+	}
+
+	int* ptr = nullptr;
+	const int* c = nullptr;
+
+
+	struct F
+	{
+		/** Var*/
+		int Var = 0;
+
+		/** Var2*/
+		int Var2 = 0;
+
+		F()
+		{
+			testop = 1;
+			testop = 2;
+		}
+
+	};
+};
+
+enum class a
+{
+	Lit 1,
+	Lit 2,	
+
+	Lit 3
+}
+
+

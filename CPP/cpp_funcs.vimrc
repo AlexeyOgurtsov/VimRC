@@ -1,13 +1,7 @@
 "C++ functions for adding C++ stuff
 
-" Cpp Context at the given line
-" Members:
-" -All from Core
-:function! GetCppContextAt(LineIndex)
-	let l:res = {}
-	:call extend(l:res, GetCoreContextAt(a:LineIndex))
-	"TODO
-	return l:res
+:function! UpdateStringOpenState_Curly(OpenState, Line)
+	return UpdateStringOpenState(a:OpenState, a:Line, "{", "}")
 :endfunction
 
 :function! GetContextAt(LineIndex)
@@ -30,6 +24,64 @@
 :function! IsCppEnumClassHeaderLine(Line, OutDecl)
 	let l:IsClassHeader = (a:Line =~# '^\s*enum\s*\(class\|\)\s*\(\w\+\)\s*\(\|:\s*\(\w\+\)\)\s*{*\s*$')
 	return l:IsClassHeader
+:endfunction
+
+"Determine cpp context lines and its type
+:function! ExtractCppContextLines(OutCppContext)
+	let l:ContextType = g:ContextType_Unknown
+
+	let l:ContextLine = GetContextLine(a:OutCppContext)
+	lockvar l:ContextLine
+
+	"Searching up until the first inner entity (class, func etc.) is found
+	"or start of file is reached
+
+	"Count of cpp-style '}' unopened operator brackets found
+	let BracketsToOpen = 0 
+	let InitiallyOpened = 0
+	let OpenState = {"CountToOpen":BracketsToOpen, "IsInitiallyOpened":InitiallyOpened}
+	let IsContextHeaderFound = 0
+	let LineIndex = l:ContextLine
+	while BoolNot(IsContextHeaderFound) && ( LineIndex > 0 )
+		let CurrLine = getline(LineIndex)
+
+		"Count brackets
+		:call UpdateStringOpenState_Curly(OpenState, CurrLine)
+		let BracketsToOpen = OpenState["CountToOpen"]
+		let InitiallyOpened = OpenState["IsInitiallyOpened"]
+
+		let l:IsReallyOpened = (InitiallyOpened && (BracketsToOpen <= 0)) || (LineIndex == l:ContextLine) 
+		if ( l:IsReallyOpened )
+			let l:Decl = {}
+			if (IsCppEnumClassHeaderLine(CurrLine, l:Decl))
+				let l:ContextType = g:ContextType_Enum
+				let IsContextHeaderFound = 1
+			elseif (IsCppClassHeaderLine(CurrLine, l:Decl))
+				let l:ContextType = g:ContextType_Class
+				let IsContextHeaderFound = 1
+			elseif (IsCppFunctionHeaderLine(CurrLine, l:Decl))
+				let l:ContextType = g:ContextType_Function
+				let IsContextHeaderFound = 1
+			else
+			"TODO: Always check when add new types
+			endif
+		endif
+
+		let LineIndex -= 1 
+	endwhile
+	
+	let a:OutCppContext[g:Context_Type] = l:ContextType
+	return l:ContextType
+:endfunction
+
+" Cpp Context at the given line
+" Members:
+" -All from Core
+:function! GetCppContextAt(LineIndex)
+	let l:res = {}
+	:call extend(l:res, GetCoreContextAt(a:LineIndex))
+	let l:ContextType = ExtractCppContextLines(l:res)
+	return l:res
 :endfunction
 
 "*** Comment

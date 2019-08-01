@@ -34,6 +34,31 @@
 	:endif
 :endfunction
 
+:function! UpdateStringOpenState(OpenState, Line, OpenStr, CloseStr)
+	let l:CountToClose = a:OpenState["CountToOpen"]
+	let l:IsInitiallyOpened = a:OpenState["IsInitiallyOpened"]
+	if(a:Line) == ""
+		return l:CountToClose
+	endif
+	let l:i = len(a:Line) - 1
+	while l:i >= 0
+		if(stridx(a:Line, a:OpenStr, l:i) == l:i)
+			"Open str
+			if (l:CountToClose == 0)
+				let l:IsInitiallyOpened = 1
+			endif
+			let l:CountToClose -= 1
+		elseif (stridx(a:Line, a:CloseStr, l:i) == l:i)
+			let l:CountToClose += 1
+		else
+			"here we have no open str nor close str
+		endif
+		let l:i -= 1
+	endwhile
+	let a:OpenState["CountToOpen"] = l:CountToClose
+	let a:OpenState["IsInitiallyOpened"] = l:IsInitiallyOpened
+:endfunction
+
 :function! GetOrDefault(L, Index, DefaultValue)
 	if(a:Index < len(a:L))
 		return a:L[a:Index]
@@ -263,7 +288,7 @@
 	if(a:Options =~# "PrepLineAfter;")
 		:call add(l:IndentedLines, "")
 	endif
-	:call append(a:LineNumber, l:IndentedLines, a:Options)
+	:call append(a:LineNumber, l:IndentedLines)
 	if(a:Options !~# "LockCur;")
 		:call JumpAfterAt(a:LineNumber, a:Lines)
 	endif
