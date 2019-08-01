@@ -1382,10 +1382,11 @@ let g:MaxCount_BaseCmdArgs = 2
 	let l:comment_lines = GetLines_EnumLiteralComment_IfShould(a:Name, a:Ops)
 	:call extend(l:lines, l:comment_lines)
 	"Add literal line
-	let l:literal = GetEnumLiteralLine(a:BaseArgs, a:Ops, a:LineAfter, a:Name)
+	let l:literal = ""
 	:if a:ShouldAddComma
-		let l:literal .= ','
+		let l:literal .= ', '
 	:endif
+	let l:literal .= GetEnumLiteralLine(a:BaseArgs, a:Ops, a:LineAfter, a:Name)
 	:call add(l:lines, l:literal)
 	return l:lines
 :endfunction
@@ -1396,7 +1397,7 @@ let g:MaxCount_BaseCmdArgs = 2
 :endfunction
 
 :function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name)
-	let l:ShouldAddComma = 1 "TODO: Calculate based on the current context
+	let l:ShouldAddComma = GetContextNumEnumLiterals(a:Context) > 0
 	let l:lines = GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name)
 	let l:indent_level = 1 "TODO
 	:call IdentBlock(l:lines, l:indent_level)
