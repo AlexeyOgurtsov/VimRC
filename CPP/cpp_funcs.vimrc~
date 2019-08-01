@@ -50,8 +50,6 @@
 		let BracketsToOpen = OpenState["CountToOpen"]
 		let InitiallyOpened = OpenState["IsInitiallyOpened"]
 
-		echo 'InitallyOpened='.InitiallyOpened.'BracketsToOpen='.BracketsToOpen.' ; Line='.CurrLine.';'
-
 		let l:IsReallyOpened = (InitiallyOpened && (BracketsToOpen <= 0)) || (LineIndex == l:ContextLine) 
 		if ( l:IsReallyOpened )
 			let l:Decl = {}
@@ -71,6 +69,18 @@
 
 		let LineIndex -= 1 
 	endwhile
+
+	if IsContextHeaderFound
+		let a:OutCppContext[g:Context_StartLine] = l:LineIndex
+		let a:OutCppContext[g:Context_EndLine] = line('$') "TODO
+	else
+		"No context header found, so we are inside the global
+		let a:OutCppContext[g:Context_StartLine] = 0
+		let a:OutCppContext[g:Context_EndLine] = line('$')
+	endif
+
+	"TODO: Indentation param
+	let a:OutCppContext[g:Context_IndentationParam] = 0
 	
 	let a:OutCppContext[g:Context_Type] = l:ContextType
 	return l:ContextType

@@ -34,6 +34,18 @@
 	:endif
 :endfunction
 
+"Returns: Index of the given line to search
+:function! FindFirstFrom(StartLineIndex, LineToSearch)
+	let i = a:StartLineIndex
+	:while (i <= line('$'))
+		if getline(i) =~# a:LineToSearch
+			return i
+		endif
+		let i += 1
+	:endwhile
+	return -1
+:endfunction
+
 :function! UpdateStringOpenState(OpenState, Line, OpenStr, CloseStr)
 	let l:CountToClose = a:OpenState["CountToOpen"]
 	let l:IsInitiallyOpened = a:OpenState["IsInitiallyOpened"]
@@ -362,11 +374,30 @@ let g:ContextType_NUM = 5
 " WARNING!!! Use GetContextAt whenever possible!)
 let g:Context_Line = "Line"
 let g:Context_Type = "ContextType"
+"Start line number of the inner context entity (class, enum, function etc.): 
+" (Always line where the HEADER's FIRST LINE: 
+" enum class, class)
+" WARNING! Never includes template<class, ... > prefix if it's on a separate
+" line above!
+" For global context - zero line 
+let g:Context_StartLine = "ContextStartLine"
+"End line number of the inner context entity (class, enum, function etc.)
+"Line RIGHT BEFORE the } line
+"For global context - last line of the file
+let g:Context_EndLine = "ContextEndLine"
+"Indentation param of the heade line (for global - indentation of the inner
+"NAMESPACE is returned)
+let g:Context_IndentationParam = "ContextIndentationParam"
 :function! GetCoreContextAt(LineIndex)
 	let l:res = {}
 	"Line
 	let l:res[g:Context_Line] = a:LineIndex
 	let l:res[g:Context_Type] = g:ContextType_Unknown "TODO
+
+	let l:res[g:Context_StartLine] = 0
+	let l:res[g:Context_EndLine] = line('$')
+
+	let l:res[g:Context_IndentationParam] = 0
 	"TODO
 	return l:res
 :endfunction
@@ -381,8 +412,20 @@ let g:Context_Type = "ContextType"
 	return a:Context[g:Context_Line]
 :endfunction
 
+:function! GetContextStartLine(Context)
+	return a:Context[g:Context_StartLine]
+:endfunction
+
+:function! GetContextEndLine(Context)
+	return a:Context[g:Context_EndLine]
+:endfunction
+
 :function! GetContextType(Context)
 	return a:Context[g:Context_Type]
+:endfunction
+
+:function! GetContextIndentationParam(Context)
+	return a:Context[g:Context_IndentationParam]
 :endfunction
 
 :function! GetCoreEchoContextLines(IsError, Msg, Context, EchoOptions)
