@@ -224,7 +224,10 @@
 :function! GetUEnumClass_LinesAbove(IsFlags, OpsList, Name, Category)
 	let l:Lines = []
 	let l:Specs = "BlueprintType" "TODO
-	let l:MetaLine = "" "TODO: Flags support
+	let l:MetaLine = "" 
+	if (a:IsFlags)
+		let l:MetaLine .= "Bitflags"
+	endif
 	:call add(l:Lines, GetUEnumLine(Specs, MetaLine, a:Category))
 	return l:Lines
 :endfunction
@@ -237,16 +240,37 @@
 	return l:Lines
 :endfunction
 
-:function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, Specs)
+:function! IsUEnumSpecialHiddenLiteral(IsFlags, OpsList, Name, Value, Specs)
+	if(a:IsFlags)
+		if(a:Name == "Default" || a:Name == "None")
+			return 1
+		endif
+
+		if(a:Value == 0)
+			return 1
+		endif
+	endif
+
+	return 0
+:endfunction
+
+:function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, Value, Specs)
 	let l:MetaLine = ""
 	let l:Category = ""
 	let l:RealSpecs = a:Specs
-	if (a:Name !~# ("NoDisplayName"))
-		if len(l:RealSpecs) > 0
-			let l:RealSpecs .= ", "
-		endif
-		let l:RealSpecs .= "DisplayName=\"".a:Name."\""
-	:endif
+
+	if IsUEnumSpecialHiddenLiteral(a:IsFlags, a:OpsList, a:Name, a:Value, a:Specs)
+		let l:RealSpecs .= "Hidden"
+	else
+		"Not special hidden literal!"
+		if (a:Name !~# ("NoDisplayName"))
+			if len(l:RealSpecs) > 0
+				let l:RealSpecs .= ", "
+			endif
+			let l:RealSpecs .= "DisplayName=\"".a:Name."\""
+		:endif
+	endif
+
 	return GetUMetaLine(l:RealSpecs, l:MetaLine, l:Category)
 :endfunction
 
@@ -271,6 +295,9 @@
 		return 0
 	endif
 
+	" Literal value: if -1, then the value is not provided
+	let l:LiteralValue = -1 "TODO: get from arguments
+
 	"Checking args
 	let l:Name = l:MyArgs[l:NameArgIndex]
 	let l:Category = GetOrDefault(l:MyArgs, 1, "Misc")
@@ -286,7 +313,7 @@
 		let l:ClassLinesBelow = GetUEnumClass_LinesBelow(l:IsFlags, l:OpsList, l:Name, l:Category)
 	elseif IsEnumLiteralContextType(l:ContextType)
 		let l:LiteralSpecs = ""
-		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralSpecs)
+		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralValue, l:LiteralSpecs)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")

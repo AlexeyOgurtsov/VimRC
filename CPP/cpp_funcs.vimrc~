@@ -1359,15 +1359,19 @@ let g:MaxCount_BaseCmdArgs = 2
 	return l:lines
 :endfunction
 
-:function! GetEnumLiteralLine(BaseArgs, Ops, LineAfter, Name)
+:function! GetEnumLiteralLine(BaseArgs, Ops, LineAfter, Name, ValueStr)
 	let l:res = a:Name
 	if(len(a:LineAfter) > 0)
 		let l:res .= ' '.a:LineAfter
 	endif
+	if(len(a:ValueStr) > 0)
+		let l:res .= " = "
+		let l:res .= a:Name
+	endif
 	return l:res
 :endfunction
 
-:function! GetLines_EnumLiteral(ShouldAddComma, BaseArgs, Ops, Context, LineAfter, Name)
+:function! GetLines_EnumLiteral(ShouldAddComma, BaseArgs, Ops, Context, LineAfter, Name, ValueStr)
 	let l:lines = []
 	"Add Comment
 	let l:comment_lines = GetLines_EnumLiteralComment_IfShould(a:Name, a:Ops)
@@ -1377,7 +1381,7 @@ let g:MaxCount_BaseCmdArgs = 2
 	:if a:ShouldAddComma
 		let l:literal .= ', '
 	:endif
-	let l:literal .= GetEnumLiteralLine(a:BaseArgs, a:Ops, a:LineAfter, a:Name)
+	let l:literal .= GetEnumLiteralLine(a:BaseArgs, a:Ops, a:LineAfter, a:Name, a:ValueStr)
 	:call add(l:lines, l:literal)
 	return l:lines
 :endfunction
@@ -1388,9 +1392,9 @@ let g:MaxCount_BaseCmdArgs = 2
 	return AddCodeAt(a:Context, l:lines, [], a:Ops)
 :endfunction
 
-:function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name)
+:function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name, ValueStr)
 	let l:ShouldAddComma = GetContextNumEnumLiterals(a:Context) > 0
-	let l:lines = GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name)
+	let l:lines = GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name, a:ValueStr)
 	":call EchoContext(0, "Debug context", a:Context, "")
 	"echo "AddCode_EnumLiteral: Debug: GetContextIndentationParam(a:Context): ".GetContextIndentationParam(a:Context)
 	"echo "AddCode_EnumLiteral: Debug: IndentLevel: ".l:indent_level
@@ -1499,13 +1503,15 @@ let g:MaxCount_BaseCmdArgs = 2
 
 	"Getting custom args
 	let l:Name = l:MyArgs[0]
+	let l:ValueStr = GetOrDefault(l:MyArgs, 1, "")
+	"echo "DEBUG:EnumOrLiteral CMD: Name= ".l:Name."; ValueStr=".l:ValueStr
 	
 	let l:ContextType = GetContextType(l:Context)
 	if IsEnumClassContextType(l:ContextType)
 		return AddCode_EnumClass(l:BaseArgs, l:Ops, l:Context, GetKey_ListType(l:BaseArgs, "ClassLinesAbove"), GetKey_ListType(l:BaseArgs, "ClassLinesBelow"), l:Name)
 	elseif IsEnumLiteralContextType(l:ContextType)
 		let l:LiteralLineAfter = GetKey_StringType(l:BaseArgs, "LiteralLineAfter")
-		return AddCode_EnumLiteral(l:BaseArgs, l:Ops, l:Context, l:LiteralLineAfter, l:Name)
+		return AddCode_EnumLiteral(l:BaseArgs, l:Ops, l:Context, l:LiteralLineAfter, l:Name, l:ValueStr)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")
@@ -1524,7 +1530,7 @@ let g:MaxCount_BaseCmdArgs = 2
 "Arguments (when adding enum class):
 "	Ops ClassName
 "Arguments (when adding enum literal):
-"	Ops LiteralName
+"	Ops LiteralName [Value]
 :command! -nargs=* En :call CmdFunc_AddCode_EnumClassOrLiteral({}, <f-args>)
 
 "Ars: Ops StructName 
@@ -1535,19 +1541,6 @@ let g:MaxCount_BaseCmdArgs = 2
 :command! -nargs=* TStru :call CmdFunc_AddCode_CppClass({"IsStruct":1, "IsTempl":1}, <f-args>)
 "Ars: Ops TemplParams ClassName 
 :command! -nargs=* TCla :call CmdFunc_AddCode_CppClass({"IsStruct":0, "IsTempl":1}, <f-args>)
-
-"Old command:
-"Args: Name [OptionsString]
-":command! -nargs=* Stru :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
-
-""Args: Name [template_argument list or Dictionary] [OptionsString]
-":command! -nargs=* TStru :call CmdFunc_AddCode_CppClass_TemplDefault(1, [], <f-args>)
-
-""Args: Name [OptionsString]
-":command! -nargs=* Class :call CmdFunc_AddCode_CppClass_Default(0, [], <f-args>)
-
-""Args: Name [template_argument list or Dictionary] [OptionsString]
-":command! -nargs=* TClass :call CmdFunc_AddCode_CppClass_TemplDefault(0, [], <f-args>)
 
 "Adds Cpp variable at current position of the document
 "(inside function, or inside class)
