@@ -603,7 +603,8 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 "Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
 "inside namespace, etc.)
 :function! AddIndentedCodeLines(Lines, Options)
-	let l:Context = CurrOrContext({}, a:Options)
+	let l:Context = ContextOrCurr({}, a:Options)
+	let l:LineNumber = GetContextLine(l:Context)
 	:call AddIndentedCodeLinesAt(l:LineNumber, a:Lines, a:Options)
 :endfunction
 "Append both declaration and definition 
