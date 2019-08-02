@@ -1417,6 +1417,10 @@ let g:MaxCount_BaseCmdArgs = 2
 	"Main code
 	:call extend(l:lines, GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name, a:ValueStr))
 
+	"Empty line after the literal
+	if(l:PrependLineAfter)
+		:call add(l:lines, "")
+	endif
 
 	" DEBUG {
 		":call EchoContext(0, "Debug context", a:Context, "")

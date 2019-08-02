@@ -274,7 +274,33 @@
 	return GetUMetaLine(l:RealSpecs, l:MetaLine, l:Category)
 :endfunction
 
-"Argumetns: see the corresponding command
+:function! AddCode_UEnumFlags_DefaultMembers(Context, Ops)
+	if(a:Ops =~# ";NoDef;")
+		return
+	endif
+
+	"Line, where the start brace of the enum is located
+	let l:EnumBraceLine = FindFirstFrom(GetContextLine(a:Context), "{")
+	:call cursor(l:EnumBraceLine, 1)
+
+	" DEBUG {
+		"echo "DEBUG: AddCode_UEnumFlags_DefaultMembers: "
+		"echo "l:EnumBraceLine=".l:EnumBraceLine
+	" DEBUG }
+
+	"Adding the None literal
+	:UEn Flags; None 0
+	let l:AfterNoneLocation = line('.')
+
+	"Adding the Default literal
+	:UEn Flags; Default None	
+
+	"Jump to position right after the None literal, so we can add new
+	"literals right below it just after we created the enum class
+	:call cursor(l:AfterNoneLocation, 1)
+:endfunction
+
+"Arguments: see the corresponding command
 :function! CmdFunc_AddCode_UEnumOrLiteral(...)
 	let l:EntityType = g:ContextType_Enum
 
@@ -306,12 +332,16 @@
 	let l:ClassLinesAbove = []
 	let l:ClassLinesBelow = []
 	let l:LiteralLineAfter = ""
+
+	"Should we add literal (not enum class)
 	if IsEnumClassContextType(l:ContextType)
+		let l:AddLiteral = 0
 		"Fixing name
 		let FixedName = GetFixedEnumOrClassName(l:EntityType, 0, 0, l:Name, l:Ops)
 		let l:ClassLinesAbove = GetUEnumClass_LinesAbove(l:IsFlags, l:OpsList, l:FixedName, l:Category)
 		let l:ClassLinesBelow = GetUEnumClass_LinesBelow(l:IsFlags, l:OpsList, l:FixedName, l:Category)
 	elseif IsEnumLiteralContextType(l:ContextType)
+		let l:AddLiteral = 1
 		let FixedName = l:Name "No name fixing required when adding a literal
 		let l:LiteralSpecs = ""
 		" Literal value str
@@ -330,6 +360,13 @@
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesBelow"] = l:ClassLinesBelow
 	:let l:NewArgs[g:BaseArgsIndex]["LiteralLineAfter"] = l:LiteralLineAfter
 	:call call(function("CmdFunc_AddCode_EnumClassOrLiteral"), l:NewArgs)
+
+	"Post-command actions
+	if(BoolNot(l:AddLiteral))
+		if(l:IsFlags)
+			:call AddCode_UEnumFlags_DefaultMembers(l:Context, l:Ops)
+		endif
+	endif
 
 	return 1
 :endfunction
