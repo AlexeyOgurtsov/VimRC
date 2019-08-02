@@ -625,29 +625,83 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 "Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
 "inside namespace, etc.)
 "-DOES automaticall jumps after end of the inserted block by itself
+"Returns:
+"	Index of the last line of inserted code (EXCLUDING extra newlines!) 
+"	(or insert line index, if empty block is inserted)
 :function! AddIndentedCodeLinesAt(Context, Lines, Options)
 	let l:LineNumber = GetContextLine(a:Context)
 	let l:IndentedLines = deepcopy(a:Lines)
-	if(a:Options =~# "PrepLineBefore;")
+
+	"Calculate EndLineIndex
+	if (len(l:IndentedLines) > 0)
+		let EndLineIndex = l:LineNumber + len(l:IndentedLines) - 1
+	else
+		let EndLineIndex = l:LineNumber
+	endif
+
+	"Identation and formatting
+	if(a:Options =~# ";PrepLineBefore;")
 		:call insert(l:IndentedLines, "", 0)
 	endif
-	if(a:Options =~# "PrepLineAfter;")
+	if(a:Options =~# ";PrepLineAfter;")
 		:call add(l:IndentedLines, "")
 	endif
-	if(a:Options !~# "NoDefaultIndent;")
+	if(a:Options !~# ";NoDefaultIndent;")
 		let IndentParam = GetContextIndentationParam(a:Context)
 		"By default we ident on the level of the context PLUS one
 		"However, when a special argument is given, we indent on level
 		"of the context
-		if ((a:Options !~# "NoPlusOneIndent;") && ContextRequiresExtraIndentation(a:Context, a:Options))
+		if ((a:Options !~# ";NoPlusOneIndent;") && ContextRequiresExtraIndentation(a:Context, a:Options))
 			let IndentParam += 1
 		endif
 		:call IdentBlock(l:IndentedLines, IndentParam)
 	endif
+
+	" Appending to buffer
 	:call append(l:LineNumber, l:IndentedLines)
-	if(a:Options !~# "LockCur;")
+
+	"Cursor
+	if(a:Options !~# ";LockCur;")
 		:call JumpAfterAt(l:LineNumber, a:Lines)
 	endif
+	return EndLineIndex
+:endfunction
+
+"**** Appends private part of the code 
+"(part that is typically to be included in the .cpp file)
+"
+" Can insert code either into the current file (based on options)
+" or switch/load other buffer
+" Automatically restores context (cursor position, current buffer) 
+" based on options
+"
+" Arguments:
+" 	Public context: context where do we inserted public lines
+" 	End public line index: the LAST line, where public code was inserted
+" 	(EXCLUDING extra newlines)
+:function! AddPrivateCode_IfShould(PublicContext, EndPublicLineIndex, PrivateLines, Options)
+	let l:AddPriv = (a:Options !~ ";NoPriv;") 
+	if BoolNot(l:AddPriv)
+		return -1
+	endif
+
+
+	" New Options
+	let l:NewOptions = a:Options
+	let l:AddSepLine = 1
+	if(l:AddSepLine)
+		let l:NewOptions .= ";PrepLineBefore;"
+	endif
+
+	"Should we insert private lines right after the public code
+	let l:InsertPrivateHere = (a:Options =~ ";PrivHere;")
+	if(l:InsertPrivateHere)
+		let l:InsertLine = a:EndPublicLineIndex + 1
+
+		let l:Context = GetContextAt(l:InsertLine)
+		:call AddIndentedCodeLinesAt(l:Context, a:PrivateLines, l:NewOptions)
+	endif
+	
 :endfunction
 
 "Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
@@ -665,15 +719,16 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 " (because some commands need that cursor is jumped elsewhere)
 " Returns:
 " 	Index of line, where public lines where inserted
-
 :function! AddCodeAt(Context, PublicLines, PrivateLines, Options)
 	let l:PublicLineNumber = GetContextLine(a:Context)
-	let l:AddPublic = (a:Options !~ "NoPublic;")
-	let l:AddPriv = (a:Options !~ "NoPriv;") 
+	let l:AddPublic = (a:Options !~ ";NoPublic;")
+
 	"Adding public code
 	let l:BestContext = ContextOrCurr(a:Context, a:Options)
-	:call AddIndentedCodeLinesAt(l:BestContext, a:PublicLines, a:Options)
-	"TODO: Add private lines
+	let l:EndPublicLineIndex = AddIndentedCodeLinesAt(l:BestContext, a:PublicLines, a:Options)
+
+	"Adding private code"
+	:call AddPrivateCode_IfShould(l:BestContext, l:EndPublicLineIndex, a:PrivateLines, a:Options)
 	return l:PublicLineNumber
 :endfunction
 
