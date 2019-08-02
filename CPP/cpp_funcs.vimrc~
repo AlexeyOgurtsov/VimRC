@@ -111,7 +111,20 @@
 		let InitiallyOpened = OpenState["IsInitiallyOpened"]
 
 		let l:IsReallyOpened = (InitiallyOpened && (BracketsToOpen <= 0)) || (LineIndex == l:ContextLine) 
-		let l:OpenBracketExists = FindFirstFromAndBefore(LineIndex, "{", "}")
+		let l:OpenBracketExists = (FindFirstFromAndBefore(LineIndex, "{", "}") > 0)
+
+		" DEBUG {
+		"let l:debug_lines = [ "******* ExtractCppContextLines: DEBUG: " ]
+		":call add(l:debug_lines, "LineIndex=".LineIndex)
+		":call add(l:debug_lines, "; Line=".CurrLine)
+		":call add(l:debug_lines, "; IsContextHeaderFound=".IsContextHeaderFound)
+		":call add(l:debug_lines, "; BracketsToOpen=".BracketsToOpen)
+		":call add(l:debug_lines, "; InitallyOpened=".InitiallyOpened)
+		":call add(l:debug_lines, "; IsReallyOpened=".l:IsReallyOpened)
+		":call add(l:debug_lines, "; OpenBracketExists=".l:OpenBracketExists)
+		":call EchoBlock(0, l:debug_lines, "")
+		" DEBUG }
+
 		if ( l:IsReallyOpened && l:OpenBracketExists )
 			let l:Decl = {}
 			if (IsCppEnumClassHeaderLine(CurrLine, l:Decl))
@@ -1401,11 +1414,13 @@ let g:MaxCount_BaseCmdArgs = 2
 :function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name)
 	let l:ShouldAddComma = GetContextNumEnumLiterals(a:Context) > 0
 	let l:lines = GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name)
-	let l:indent_level = 1 "NOTE: It's right (1), because the other part will be computed automaticall by AddCode functions!
 	":call EchoContext(0, "Debug context", a:Context, "")
 	"echo "AddCode_EnumLiteral: Debug: GetContextIndentationParam(a:Context): ".GetContextIndentationParam(a:Context)
 	"echo "AddCode_EnumLiteral: Debug: IndentLevel: ".l:indent_level
-	:call IdentBlock(l:lines, l:indent_level)
+	"WARNING!!! We should NOT indent at all! Identation should be
+	"performed automatically by AddCode!
+	"let l:indent_level = 1
+	":call IdentBlock(l:lines, l:indent_level)
 	return AddCodeAt(a:Context, l:lines, [], a:Ops)
 :endfunction
 

@@ -111,7 +111,20 @@
 		let InitiallyOpened = OpenState["IsInitiallyOpened"]
 
 		let l:IsReallyOpened = (InitiallyOpened && (BracketsToOpen <= 0)) || (LineIndex == l:ContextLine) 
-		let l:OpenBracketExists = FindFirstFromAndBefore(LineIndex, "{", "}")
+		let l:OpenBracketExists = (FindFirstFromAndBefore(LineIndex, "{", "}") > 0)
+
+		" DEBUG {
+		"let l:debug_lines = [ "******* ExtractCppContextLines: DEBUG: " ]
+		":call add(l:debug_lines, "LineIndex=".LineIndex)
+		":call add(l:debug_lines, "; Line=".CurrLine)
+		":call add(l:debug_lines, "; IsContextHeaderFound=".IsContextHeaderFound)
+		":call add(l:debug_lines, "; BracketsToOpen=".BracketsToOpen)
+		":call add(l:debug_lines, "; InitallyOpened=".InitiallyOpened)
+		":call add(l:debug_lines, "; IsReallyOpened=".l:IsReallyOpened)
+		":call add(l:debug_lines, "; OpenBracketExists=".l:OpenBracketExists)
+		":call EchoBlock(0, l:debug_lines, "")
+		" DEBUG }
+
 		if ( l:IsReallyOpened && l:OpenBracketExists )
 			let l:Decl = {}
 			if (IsCppEnumClassHeaderLine(CurrLine, l:Decl))

@@ -1,5 +1,11 @@
 
 	/** N*/
+	enum class N : uint8
+	{
+		/** E*/
+		E UMETA(DisplayName="E")
+	};
+	/** N*/
 	enum class N
 	{
 		N
