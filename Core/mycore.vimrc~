@@ -241,6 +241,8 @@
 "NOTE! Basic args must be the FIRST (i.e.g with zero index) element 
 "of the argument list
 :let g:BaseArgsIndex = 0
+:let g:OpsArgIndex = 1
+:let g:NumCommonArgs = 2
 :function! GetBaseArgsChecked(ArgList, OutBaseArgs)
 	if(len(a:ArgList) == 0)
 		echoerr "Base args must be provided as first argument of Dictionary type (specify {} if no basic args to be passed)"

@@ -1012,24 +1012,6 @@
 	:call add(l:lines, "};")
 	return l:lines
 :endfunction
-" Adds definition or declaration on the given line, based on arguments
-:function! CppClassAt_General(LineNumber, IsDefinition, Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove)
-	let l:definition_lines = []
-	let l:class_lines = GetLines_CppClass_General(l:definition_lines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove)
-	:if a:IsDefinition
-		:call append(a:LineNumber, l:definition_lines)
-	:else
-		:call append(a:LineNumber, l:class_lines)
-	:endif
-:endfunction
-"helper for adding non-template class with default options
-:function! CppClassAt(LineNumber, IsDefinition, Name)
-	:call CppClassAt_General(a:LineNumber, a:IsDefinition, a:Name, [], 0, "", [])
-:endfunction
-"helper for adding non-template struct with default options
-:function! CppStructAt(LineNumber, IsDefinition, Name)
-	:call CppClassAt_General(a:LineNumber, a:IsDefinition, a:Name, [], 1, "", [])
-:endfunction
 "General function for adding code of class
 :function! AddCode_CppClass_General(Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove, ExtraLinesAbove)
 	"Calculate lines"
@@ -1048,23 +1030,6 @@
 		let l:Opts = l:Opts . "CustDefCtor;"
 	endif
 	:call AddCode_CppClass_General(a:Name, a:TemplParams, a:IsStruct, l:Opts, a:ExtraPrivateLinesAbove, a:ExtraLinesAbove)
-:endfunction
-
-:function! AddCode_CppClass_TemplDefault(IsStruct, StructName, TemplParamsDictionary, Ops, ExtraPrivateLinesAbove)
-	:call AddCode_CppClass_GeneralDefault(a:IsStruct, a:StructName, a:TemplParamsDictionary, a:Ops, a:ExtraPrivateLinesAbove)
-:endfunction
-
-:function! AddCode_CppClass_TemplDefault_Simple(IsStruct, StructName, TemplParamsDictionary, Ops)
-	:call AddCode_CppClass_TemplDefault(a:IsStruct, a:StructName, a:TemplParamsDictionary, a:Ops, [])
-:endfunction
-
-" Adds code of cpp struct with default options and no template arguments
-:function! AddCode_CppClass_Default(IsStruct, Name, OptionString, ExtraPrivateLinesAbove)
-	:call AddCode_CppClass_GeneralDefault(a:IsStruct, a:Name, {}, a:OptionString, a:ExtraPrivateLinesAbove)
-:endfunction
-" Adds code of cpp struct with default options and no template arguments
-:function! AddCode_CppClass_Default_Simple(IsStruct, Name, OptionString)
-	:call AddCode_CppClass_Default(a:IsStruct, a:Name, a:OptionString, [])
 :endfunction
 
 "Argument indices
@@ -1490,7 +1455,14 @@ let g:MaxCount_BaseCmdArgs = 2
 
 	let l:IsStruct = GetKey_IntType(l:BaseArgs, "IsStruct")
 	let l:ExtraPrivateLinesAbove = GetKey_ListType(l:BaseArgs, "ExtraPrivateLinesAbove")
-	let l:ExtraLinesAbove = GetKey_ListType(l:BaseArgs, "ExtraLinesAbove")
+	let l:ExtraLinesAbove = GetKey_ListType(l:BaseArgs, "ClassLinesAbove")
+
+	"DEBUG {
+	"echo "CmdFunc_AddCode_CppClass: DEBUG: ExtraPrivateLinesAbove: "
+	":call EchoBlock(0, l:ExtraPrivateLinesAbove, "")
+	"echo "CmdFunc_AddCode_CppClass: DEBUG: ClassLinesAbove: "
+	":call EchoBlock(0, l:ExtraLinesAbove, "")
+	"DEBUG }
 	
 	if IsClassContextType(l:ContextType)
 		:call AddCode_CppClass_GeneralDefault(l:IsStruct, l:Name, l:TemplParams, l:Ops, l:ExtraPrivateLinesAbove, l:ExtraLinesAbove)
@@ -1579,11 +1551,11 @@ let g:MaxCount_BaseCmdArgs = 2
 
 "Helper function: Add Cpp class both definition and declaration
 "with default name
-:function! TestCppClass(TemplParams, IsStruct, OptionString)
-	:let l:DefaultName = "TestClass"
-	:let l:ExtraPrivateLinesAbove = [ "/*", "Line1", "Line2", "*/"]
-	:call CppClassAt_General(line("."), 0, l:DefaultName, a:TemplParams, a:IsStruct, a:OptionString, l:ExtraPrivateLinesAbove)
-	:call CppClassAt_General(line("."), 1, l:DefaultName, a:TemplParams, a:IsStruct, a:OptionString, l:ExtraPrivateLinesAbove)
-:endfunction
+":function! TestCppClass(TemplParams, IsStruct, OptionString)
+"	:let l:DefaultName = "TestClass"
+"	:let l:ExtraPrivateLinesAbove = [ "/*", "Line1", "Line2", "*/"]
+"	:call CppClassAt_General(line("."), 0, l:DefaultName, a:TemplParams, a:IsStruct, a:OptionString, l:ExtraPrivateLinesAbove)
+"	:call CppClassAt_General(line("."), 1, l:DefaultName, a:TemplParams, a:IsStruct, a:OptionString, l:ExtraPrivateLinesAbove)
+":endfunction
 "*** Enum definition
 "*** Add class variables (with getters, default initialization)

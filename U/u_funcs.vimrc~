@@ -40,7 +40,10 @@
 :endfunction
 
 
-:function! GetFixedUStructName(Name)
+" Fixed name of UClass/UStruct/UEnum
+:function! GetFixedEnumOrClassName(ContextType, IsStruct, IsTempl, Name, Ops)
+	"TODO: Check for type
+
 	let FixedName = copy(a:Name)
 
 	let IsLowerF = (FixedName[0] ==# 'f')
@@ -84,16 +87,83 @@
 	return GetUnrealContextAt(a:LineIndex)
 :endfunction
 
+"Returns struct or class lines above from options
+:function! GetClassLines_FromOptions(ClassLinesAboveHeader, IsStruct, IsTempl, Category, Ops)
+	:if(a:IsTempl && (a:Ops !~# ";Force;"))
+		"For now unreal engine 4 does not support template classes or
+		"structs, so we should not add generated body etc.
+		return []
+	:endif
+
+	"echo "GetClassLines_FromOptions: DEBUG: type(a:ClassLinesAboveHeader)=".type(a:ClassLinesAboveHeader)
+	:call extend(a:ClassLinesAboveHeader, ["GENERATED_BODY()", ""])
+
+	if(a:IsStruct)
+		let ClassLinesAbove = [GetUStructLine("BlueprintType", "", a:Category)]
+	else
+		let l:Specs = ""
+		let l:Meta = ""
+		if (a:Ops =~# ";Abstract;")
+			"l:Specs .= ""TODO
+		endif	
+		if (a:Ops =~# ";Comp;")
+			"TODO
+		endif
+		let ClassLinesAbove = [GetUClassLine(l:Specs, l:Meta, a:Category)]
+	endif
+	return ClassLinesAbove
+:endfunction!
+
 :function! CmdFunc_AddCode_UClass(...)
-	let l:new_args = copy(a:000)
-	"Update arguments
-	let l:new_args[g:AddCode_CppClass_ClassNameArgIndex] = GetFixedUStructName(l:new_args[g:AddCode_CppClass_ClassNameArgIndex])
-	"ULines
-	let ULines = [GetUStructLine("BlueprintType", "", "Misc")]
-	:call AddIndentedCodeLines(ULines, "")
-	":call JumpAfter(ULines) "Automatically jumps now due to options
-	"Class itself
-	:call call(function("CmdFunc_AddCode_CppClass_Default"), new_args)
+	let l:EntityType = g:ContextType_Class
+
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+	let l:ContextType = GetContextType(l:Context)
+
+	"Checking custom args
+	"TODO: calc name argument index!
+	if NoArg(1, l:MyArgs, "Name", 0)
+		return 0
+	endif
+
+	"Is templated class"
+	let l:IsTempl = GetKey_IntType(l:BaseArgs, "IsTempl")
+	let l:IsStruct = GetKey_IntType(l:BaseArgs, "IsStruct")
+
+	"WARNING! Arguments are shifted based on whether templ or NON-templ
+	"command used!
+	if l:IsTempl
+		let l:NameArgIndex = 1 
+		if ( l:Ops !~# ";Force;")
+			echoerr "Template UStruct/UClass are not supported by Unreal Engine for now (use ;Force; to add)"	
+			return
+		endif
+	else
+		"NON templ class
+		let l:NameArgIndex = 0 
+	endif
+	let l:CategoryArgIndex = (l:NameArgIndex + 1)
+	let l:Category = GetOrDefault(l:MyArgs, l:CategoryArgIndex, "Misc")
+
+	"Updaing new arguments
+	let NewArgs = deepcopy(a:000)
+
+	"Update name	
+	let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = GetFixedEnumOrClassName(l:EntityType, l:IsStruct, l:IsTempl, l:MyArgs[NameArgIndex], l:Ops)
+
+	"Update U-specific lines (header above and class above)
+	let l:NewArgs[g:BaseArgsIndex]["ExtraPrivateLinesAbove"] = [] "We must always add a key
+	let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = GetClassLines_FromOptions(l:NewArgs[g:BaseArgsIndex]["ExtraPrivateLinesAbove"], l:IsStruct, l:IsTempl, l:Category, l:Ops)
+
+	"Call the basic CppClass function
+	:call call(function("CmdFunc_AddCode_CppClass"), NewArgs)
 :endfunction
 
 :function! GetUPropertyLine_ForVar(Context, OptionString, TypeStr, Name, Category)
@@ -196,7 +266,7 @@
 
 	let l:IsFlags = (l:Ops =~# "Flags;")
 	
-	let l:ContextType = GetContextIndentationParam(l:Context)
+	let l:ContextType = GetContextType(l:Context)
 	let l:ClassLinesAbove = []
 	let l:ClassLinesBelow = []
 	let l:LiteralLineAfter = ""
@@ -227,7 +297,11 @@
 "arguments for enum literal
 "	Options Name
 :command! -nargs=* UEn :call CmdFunc_AddCode_UEnumOrLiteral({}, <f-args>)
-:command! -nargs=* UStru :call CmdFunc_AddCode_UClass(1, ["GENERATED_BODY()",""], <f-args>)
+
+:command! -nargs=* UStru :call CmdFunc_AddCode_UClass({"IsStruct":1}, <f-args>)
+:command! -nargs=* UCla :call CmdFunc_AddCode_UClass({"IsStruct":0}, <f-args>)
+
+":command! -nargs=* UStru :call CmdFunc_AddCode_UClass(1, ["GENERATED_BODY()",""], <f-args>)
 
 "Add Unreal Property (with UPROPERTY or without, according to flags)
 "Arguments:
