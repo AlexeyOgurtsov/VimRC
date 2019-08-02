@@ -934,7 +934,7 @@
 	return l:decl_lines
 :endfunction
 "* See help above
-:function! GetLines_CppClass_General(OutDefinition, Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove)
+:function! GetLines_CppClass_General(OutDefinition, Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove, ExtraLinesAbove)
 	"Destructor
  	let l:destructor_definition = []
 	let l:destructor_priv = []
@@ -954,6 +954,7 @@
 	"Declaration result
 	let l:lines = []
 	"Header
+	:call extend(l:lines, a:ExtraLinesAbove)
 	:call extend(l:lines, GetLines_CppClassHeader_General(a:Name, a:TemplParams, a:IsStruct, a:OptionString))
 	:call add(l:lines, "{")
 	let l:ExtraPrivateLinesAbove_Idented = deepcopy(a:ExtraPrivateLinesAbove)
@@ -1030,22 +1031,23 @@
 	:call CppClassAt_General(a:LineNumber, a:IsDefinition, a:Name, [], 1, "", [])
 :endfunction
 "General function for adding code of class
-:function! AddCode_CppClass_General(Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove)
+:function! AddCode_CppClass_General(Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove, ExtraLinesAbove)
 	"Calculate lines"
 	let l:PrivLines = []
-	let l:PublicLines = GetLines_CppClass_General(l:PrivLines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove)
+	let l:PublicLines = GetLines_CppClass_General(l:PrivLines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove, a:ExtraLinesAbove)
 	"Add code"
-	:call AddCodeAt(GetContextAt(line('.')), l:PublicLines, l:PrivLines, a:OptionString)
+	let l:Context = ContextOrCurr({}, a:OptionString)
+	:call AddCodeAt(l:Context, l:PublicLines, l:PrivLines, a:OptionString)
 	"TODO Cursor jumping
 :endfunction
 " Adds code of cpp struct with default options
-:function! AddCode_CppClass_GeneralDefault(IsStruct, Name, TemplParams, OptionString, ExtraPrivateLinesAbove)
+:function! AddCode_CppClass_GeneralDefault(IsStruct, Name, TemplParams, OptionString, ExtraPrivateLinesAbove, ExtraLinesAbove)
 	let l:Opts = a:OptionString
 	if a:IsStruct
 		let l:Opts = l:Opts . "Inline;"
 		let l:Opts = l:Opts . "CustDefCtor;"
 	endif
-	:call AddCode_CppClass_General(a:Name, a:TemplParams, a:IsStruct, l:Opts, a:ExtraPrivateLinesAbove)
+	:call AddCode_CppClass_General(a:Name, a:TemplParams, a:IsStruct, l:Opts, a:ExtraPrivateLinesAbove, a:ExtraLinesAbove)
 :endfunction
 
 :function! AddCode_CppClass_TemplDefault(IsStruct, StructName, TemplParamsDictionary, Ops, ExtraPrivateLinesAbove)
@@ -1114,6 +1116,23 @@ let g:AddCode_CppClass_ClassNameArgIndex = 2
 	return res_dict
 :endfunction
 
+"Does NOT check that the given param exists!
+"Returns template parameters argument DICTIONARY
+:function! GetTemplParamsArgument(ArgList, ArgIndex)
+		let TemplParams = eval(a:ArgList[a:ArgIndex])
+
+		:if type(TemplParams) ==  v:t_dict
+			let TemplParamsDictionary = TemplParams
+		:elseif type(TemplParams) ==  v:t_list
+			let TemplParamsList = TemplParams
+			let TemplParamsDictionary = TemplParams_ListToDict(TemplParamsList)
+		:else
+			echoerr "Wrong type of template params list (must be either list or dictionary (name to type mapping))"
+			return {}
+		:endif
+		return TemplParamsDictionary
+:endfunction
+
 :function! CmdFunc_AddCode_CppClass_TemplDefault(...)
 	let args = a:000
 	lockvar args
@@ -1140,15 +1159,7 @@ let g:AddCode_CppClass_ClassNameArgIndex = 2
 		"here we have 2 or 3 arguments
 		let StructName = args[g:AddCode_CppClass_ClassNameArgIndex]
 		lockvar StructName
-		let TemplParams = eval(args[3])
-		:if type(TemplParams) ==  v:t_dict
-			let TemplParamsDictionary = TemplParams
-		:elseif type(TemplParams) ==  v:t_list
-			let TemplParamsList = TemplParams
-			let TemplParamsDictionary = TemplParams_ListToDict(TemplParamsList)
-		:else
-			echoerr "Wrong type of template params list (must be either list or dictionary (name to type mapping))"
-		:endif
+		let TemplParams = GetTemplParamsArgument(args, 3)
 
 		if n >= 3
 			let Ops = args[4]
@@ -1183,7 +1194,7 @@ let g:AddCode_CppClass_ClassNameArgIndex = 2
 		let Name = args[0]
 
 		"Find pragma line index (we should include below it always!)
-		let pragma_line = search('#pragma')
+		let pragma_line = search('^\s*#pragma')
 		let buffer_line_count = line('$')
 
 		"We must append blank line if pragme line is the last,
@@ -1432,7 +1443,65 @@ let g:MaxCount_BaseCmdArgs = 2
 	return (a:ContextType == g:ContextType_Global) || (a:ContextType == g:ContextType_Class) || (a:ContextType == g:ContextType_Unknown)
 :endfunction
 
-"Argumetns: see the corresponding command for arguments
+:function! IsClassContextType(ContextType)
+	if(a:ContextType == g:ContextType_Enum)
+		return 0
+	endif
+	return 1
+:endfunction
+
+"Arguments: see the corresponding command for arguments
+:function! CmdFunc_AddCode_CppClass(...)
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+	let l:ContextType = GetContextType(l:Context)
+
+	"Checking custom args
+	if NoArg(1, l:MyArgs, "Name", 0)
+		return 0
+	endif
+
+	"Is templated class"
+	let l:IsTempl = GetKey_IntType(l:BaseArgs, "IsTempl")
+
+	"Getting custom args
+	lockvar l:TemplParamsArgIndex
+	if(l:IsTempl)
+		"Templ params arg index is ZERO
+		let l:TemplParamsArgIndex = 0
+		if NoArg(1, l:MyArgs, "TemplParams", l:TemplParamsArgIndex)
+			return 0
+		endif
+		let l:TemplParams = GetTemplParamsArgument(l:MyArgs, l:TemplParamsArgIndex)
+		"Templ params name arg index is ONE (right after TemplParams)
+		let l:Name = l:MyArgs[1]
+	else
+		"Templ params name arg index is ZERO
+		let l:TemplParams = {}
+		let l:Name = l:MyArgs[0]
+	endif
+	lockvar l:Name
+
+	let l:IsStruct = GetKey_IntType(l:BaseArgs, "IsStruct")
+	let l:ExtraPrivateLinesAbove = GetKey_ListType(l:BaseArgs, "ExtraPrivateLinesAbove")
+	let l:ExtraLinesAbove = GetKey_ListType(l:BaseArgs, "ExtraLinesAbove")
+	
+	if IsClassContextType(l:ContextType)
+		:call AddCode_CppClass_GeneralDefault(l:IsStruct, l:Name, l:TemplParams, l:Ops, l:ExtraPrivateLinesAbove, l:ExtraLinesAbove)
+	else
+		"Unsupported context type here
+		:call EchoContext(1, "Unsupported context for command", l:Context, "")
+		return 0
+	endif
+:endfunction
+
+"Arguments: see the corresponding command for arguments
 :function! CmdFunc_AddCode_EnumClassOrLiteral(...)
 	let l:Context = {}
 	let l:BaseArgs = {}
@@ -1450,7 +1519,7 @@ let g:MaxCount_BaseCmdArgs = 2
 		return 0
 	endif
 
-	"Checking args
+	"Getting custom args
 	let l:Name = l:MyArgs[0]
 	
 	let l:ContextType = GetContextType(l:Context)
@@ -1480,22 +1549,33 @@ let g:MaxCount_BaseCmdArgs = 2
 "	Ops LiteralName
 :command! -nargs=* En :call CmdFunc_AddCode_EnumClassOrLiteral({}, <f-args>)
 
+"Ars: Ops StructName 
+:command! -nargs=* Stru :call CmdFunc_AddCode_CppClass({"IsStruct":1}, <f-args>)
+"Ars: Ops ClassName 
+:command! -nargs=* Cla :call CmdFunc_AddCode_CppClass({"IsStruct":0}, <f-args>)
+"Ars: Ops TemplParams StructName 
+:command! -nargs=* TStru :call CmdFunc_AddCode_CppClass({"IsStruct":1, "IsTempl":1}, <f-args>)
+"Ars: Ops TemplParams ClassName 
+:command! -nargs=* TCla :call CmdFunc_AddCode_CppClass({"IsStruct":0, "IsTempl":1}, <f-args>)
+
+"Old command:
+"Args: Name [OptionsString]
+":command! -nargs=* Stru :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
+
+""Args: Name [template_argument list or Dictionary] [OptionsString]
+":command! -nargs=* TStru :call CmdFunc_AddCode_CppClass_TemplDefault(1, [], <f-args>)
+
+""Args: Name [OptionsString]
+":command! -nargs=* Class :call CmdFunc_AddCode_CppClass_Default(0, [], <f-args>)
+
+""Args: Name [template_argument list or Dictionary] [OptionsString]
+":command! -nargs=* TClass :call CmdFunc_AddCode_CppClass_TemplDefault(0, [], <f-args>)
+
 "Adds Cpp variable at current position of the document
 "(inside function, or inside class)
 "Args: OptionString Type Name [InitExpr]
 :command! -nargs=* Va :call CmdFunc_AddCode_CppVarOrField(0, [], <f-args>)
 
-"Args: Name [OptionsString]
-:command! -nargs=* Stru :call CmdFunc_AddCode_CppClass_Default(1, [], <f-args>)
-
-"Args: Name [template_argument list or Dictionary] [OptionsString]
-:command! -nargs=* TStru :call CmdFunc_AddCode_CppClass_TemplDefault(1, [], <f-args>)
-
-"Args: Name [OptionsString]
-:command! -nargs=* Class :call CmdFunc_AddCode_CppClass_Default(0, [], <f-args>)
-
-"Args: Name [template_argument list or Dictionary] [OptionsString]
-:command! -nargs=* TClass :call CmdFunc_AddCode_CppClass_TemplDefault(0, [], <f-args>)
 
 "Helper function: Add Cpp class both definition and declaration
 "with default name
