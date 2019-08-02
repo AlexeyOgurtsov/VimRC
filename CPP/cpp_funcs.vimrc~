@@ -42,12 +42,14 @@
 :function! GetEnumFlagValueStr(Line)
 	let l:CommaPattern = '\s*\(\|,\)\s*'
 	let l:NamePattern = '\w\+'
+	let l:AnyPattern = '.*'
 	let l:Pattern = '^'.l:CommaPattern
 	let l:Pattern .= l:NamePattern
 	let l:Pattern .= '\s*=\s*'
 	let l:Pattern .= '\s*1\s*'
 	let l:Pattern .= '\s*<<\s*'
 	let l:Pattern .= '\s*\w\+\s*'
+	let l:Pattern .= l:AnyPattern
 	let l:Pattern .= l:CommaPattern
 	let l:Pattern .= '$'
 
@@ -109,13 +111,75 @@
 	return l:LineIndices
 :endfunction
 
-:function! CalculateNumEnumLiterals(OpenBraceLineIndex, Lines)
+:function! CalculateNumEnumLiterals(Lines)
 	:if BoolNot(AreLinesMeaningful(a:Lines) )
 		return 0	
 	:endif
 
 	let CountByPattern = CountLinesByPattern(a:Lines, '\s*\,\s*')
 	return CountByPattern + 1 
+
+:endfunction
+
+:function! ComputeCppEnumContext(OutContext, LinesInsideBody, Options)
+	let a:OutContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(a:LinesInsideBody)
+
+	let EnumFlag_LineIndices  = FindLineIndices_EnumFlagLiterals(a:LinesInsideBody)
+	let l:i = 0
+
+	let l:MinimalEnumFlag_LineIndex = -1
+	let l:MaxEnumFlag_LineIndex = -1
+	let l:EnumFlag_FirstHoleIndex = -1
+
+	let l:MinimalEnumFlag_Value = 0
+	let l:MaxEnumFlag_Value = 0
+	let l:FirstHole_Value = 0
+
+	while l:i < len(EnumFlag_LineIndices)
+		let LineIndex = EnumFlag_LineIndices[l:i]
+		let line = a:LinesInsideBody[LineIndex]
+		let EnumFlagShiftValue = GetEnumFlagValueStr(line)
+
+		let IsNumberFlagShift = (EnumFlagShiftValue =~# '^\d\+$')
+		if IsNumberFlagShift
+			let NumberFlagShift = str2nr(IsNumberFlagShift)
+
+			if(l:MinimalEnumFlag_LineIndex < 0 || (l:MinimalEnumFlag_Value > NumberFlagShift))
+				let l:MinimalEnumFlag_LineIndex = LineIndex
+				let l:MinimalEnumFlag_Value = NumberFlagShift
+			endif
+
+			if(l:MaxEnumFlag_LineIndex < 0 || (l:MaxEnumFlag_Value < NumberFlagShift))
+				let l:MaxEnumFlag_LineIndex = LineIndex
+				let l:MaxEnumFlag_Value = NumberFlagShift
+			endif
+
+			"TODO Hole calculation
+		endif
+		
+		let l:i += 1
+	endwhile
+
+	"DEBUG {
+		"echo "ComputeCppEnumContext: DEBUG: MinimalEnumFlag_LineIndex=".l:MinimalEnumFlag_LineIndex
+		"echo "ComputeCppEnumContext: DEBUG: MinimalEnumFlag_Value=".l:MinimalEnumFlag_Value
+
+		"echo "ComputeCppEnumContext: DEBUG: MaxEnumFlag_LineIndex=".l:MaxEnumFlag_LineIndex
+		"echo "ComputeCppEnumContext: DEBUG: MaxEnumFlag_Value=".l:MaxEnumFlag_Value
+	"DEBUG }
+
+	let a:OutContext[g:Context_MinimalEnumFlag_LineIndex] = l:MinimalEnumFlag_LineIndex
+	if(l:MinimalEnumFlag_LineIndex > 0)
+		let a:OutContext[g:Context_MinimalEnumFlagValue] = l:MinimalEnumFlag_Value
+	endif
+	let a:OutContext[g:Context_MaxEnumFlag_LineIndex] = l:MaxEnumFlag_LineIndex
+	if(l:MaxEnumFlag_LineIndex > 0)
+		let a:OutContext[g:Context_MaxEnumFlagValue] = l:MaxEnumFlag_Value
+	endif
+	let a:OutContext[g:Context_EnumFlagHole_LineIndex] = l:EnumFlag_FirstHoleIndex
+	if(l:EnumFlag_FirstHoleIndex > 0)
+		let a:OutContext[g:Context_EnumFlagHoleValue] = ""
+	endif
 
 :endfunction
 
@@ -237,7 +301,7 @@
 		"echo "Debug: StartLine=".l:StartLine." OutCppContext[IndentationParam]=".a:OutCppContext[g:Context_IndentationParam]
 
 		if l:ContextType == g:ContextType_Enum
-			let a:OutCppContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(OpenBraceLineIndex, LinesInsideBody)
+			:call ComputeCppEnumContext(a:OutCppContext, LinesInsideBody, "")
 		elseif l:ContextType == g:ContextType_Class
 			"TODO
 		elseif l:ContextType == g:ContextType_Function

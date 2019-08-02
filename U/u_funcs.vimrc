@@ -254,6 +254,30 @@
 	return 0
 :endfunction
 
+:function! GetFlagEnumLiteralValueStr(Shift, Ops)
+	return "1 << ".a:Shift
+:endfunction
+
+:function! GetUEnumLiteral_FixedValueStr(Context, IsFlags, Ops, Name, ValueStr)	
+	"echo "DEBUG: ValueStr=".a:ValueStr
+	let MaxEnumFlag_LineIndex = GetContext_MaxEnumFlag_LineIndex(a:Context)
+	let MaxEnumFlagValue = GetContext_MaxEnumFlag_Value(a:Context)
+	"echo "DEBUG: (Context)MaxEnumFlagValue=".MaxEnumFlagValue
+	if a:ValueStr == ""
+		if a:IsFlags
+			if (MaxEnumFlag_LineIndex >= 0)
+				"echo "DEBUG: Here"
+				return GetFlagEnumLiteralValueStr(str2nr(MaxEnumFlagValue) + 1, a:Ops)
+			else 
+				"No flag defined yet, define the first one
+				return GetFlagEnumLiteralValueStr(0, a:Ops)
+			endif
+		endif
+	endif
+
+	return a:ValueStr
+:endfunction
+
 :function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, ValueStr, Specs)
 	let l:MetaLine = ""
 	let l:Category = ""
@@ -324,7 +348,6 @@
 
 	"Checking args
 	let l:Name = l:MyArgs[l:NameArgIndex]
-	let l:Category = GetOrDefault(l:MyArgs, 1, "Misc")
 
 	let l:IsFlags = (l:Ops =~# "Flags;")
 	
@@ -336,6 +359,7 @@
 	"Should we add literal (not enum class)
 	if IsEnumClassContextType(l:ContextType)
 		let l:AddLiteral = 0
+		let l:Category = GetOrDefault(l:MyArgs, 1, "Misc")
 		"Fixing name
 		let FixedName = GetFixedEnumOrClassName(l:EntityType, 0, 0, l:Name, l:Ops)
 		let l:ClassLinesAbove = GetUEnumClass_LinesAbove(l:IsFlags, l:OpsList, l:FixedName, l:Category)
@@ -344,9 +368,10 @@
 		let l:AddLiteral = 1
 		let FixedName = l:Name "No name fixing required when adding a literal
 		let l:LiteralSpecs = ""
+		let l:LiteralValueStrArgIndex = 1
 		" Literal value str
-		let l:LiteralValueStr = GetOrDefault(l:MyArgs, 1, "")
-		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralValueStr, l:LiteralSpecs)
+		let l:LiteralValueStr = GetUEnumLiteral_FixedValueStr(l:Context, l:IsFlags, l:Ops, l:Name, GetOrDefault(l:MyArgs, l:LiteralValueStrArgIndex, ""))
+		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:Ops, l:Name, l:LiteralValueStr, l:LiteralSpecs)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")
@@ -356,6 +381,12 @@
 	"Calling the cpp-level command
 	:let l:NewArgs = deepcopy(a:000)
 	:let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = FixedName
+	if l:AddLiteral
+		if(g:NumCommonArgs + l:LiteralValueStrArgIndex >= len(l:NewArgs))
+			:call add(l:NewArgs, "")
+		endif
+		:let l:NewArgs[g:NumCommonArgs + l:LiteralValueStrArgIndex] = l:LiteralValueStr
+	endif
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesBelow"] = l:ClassLinesBelow
 	:let l:NewArgs[g:BaseArgsIndex]["LiteralLineAfter"] = l:LiteralLineAfter

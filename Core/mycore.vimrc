@@ -499,6 +499,13 @@ let g:Context_LinesInsideBody = "ContextLinesInsideBody"
 let g:Context_IndentationParam = "ContextIndentationParam"
 "Enums
 let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
+let g:Context_MinimalEnumFlag_LineIndex = "ContextMinimalEnumFlagLineIndex"
+let g:Context_MinimalEnumFlagValue = "ContextMinimalEnumFlagValue"
+let g:Context_MaxEnumFlag_LineIndex = "ContextMaxEnumFlagLineIndex"
+let g:Context_MaxEnumFlagValue = "ContextMaxEnumFlagValue"
+"Enum flag value that is not assigned yet
+let g:Context_EnumFlagHole_LineIndex = "ContextEnumFlagHoleLineIndex"
+let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 :function! GetCoreContextAt(LineIndex)
 	let l:res = {}
 	"Line
@@ -512,7 +519,15 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 
 	let l:res[g:Context_IndentationParam] = 0
 
+	"Enums
 	let l:res[g:Context_NumEnumLiterals] = 0
+
+	let l:res[g:Context_MinimalEnumFlag_LineIndex] = -1
+	let l:res[g:Context_MinimalEnumFlagValue] = -1
+	let l:res[g:Context_MaxEnumFlag_LineIndex] = -1
+	let l:res[g:Context_MaxEnumFlagValue] = -1
+	let l:res[g:Context_EnumFlagHole_LineIndex] = -1
+	let l:res[g:Context_EnumFlagHoleValue] = -1
 	"TODO
 	return l:res
 :endfunction
@@ -553,6 +568,30 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 
 :function! GetContextNumEnumLiterals(Context)
 	return a:Context[g:Context_NumEnumLiterals]
+:endfunction
+
+:function! GetContext_MinimalEnumFlag_LineIndex(Context)
+	return a:Context[g:Context_MinimalEnumFlag_LineIndex]
+:endfunction
+
+:function! GetContext_MinimalEnumFlag_Value(Context)
+	return a:Context[g:Context_MinimalEnumFlagValue]
+:endfunction
+
+:function! GetContext_MaxEnumFlag_LineIndex(Context)
+	return a:Context[g:Context_MaxEnumFlag_LineIndex]
+:endfunction
+
+:function! GetContext_MaxEnumFlag_Value(Context)
+	return a:Context[g:Context_MaxEnumFlagValue]
+:endfunction
+
+:function! GetContext_EnumFlagHole_LineIndex(Context)
+	return a:Context[g:Context_EnumFlagHole_LineIndex]
+:endfunction
+
+:function! GetContext_EnumFlagHole_Value(Context)
+	return a:Context[g:Context_EnumFlagHoleValue]
 :endfunction
 
 "Should we add +1 for indentation when adding into the given context?
