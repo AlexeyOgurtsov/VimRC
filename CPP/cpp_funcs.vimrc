@@ -36,6 +36,79 @@
 	return AreCoreLinesMeaningful(a:Lines)
 :endfunction
 
+" Returns string assigned to the given enum flag literal string
+" Returns "" (empty string) if not the enum flag literal
+" (strings that contain "1 << N" are considered yet literal strings)
+:function! GetEnumFlagValueStr(Line)
+	let l:CommaPattern = '\s*\(\|,\)\s*'
+	let l:NamePattern = '\w\+'
+	let l:Pattern = '^'.l:CommaPattern
+	let l:Pattern .= l:NamePattern
+	let l:Pattern .= '\s*=\s*'
+	let l:Pattern .= '\s*1\s*'
+	let l:Pattern .= '\s*<<\s*'
+	let l:Pattern .= '\s*\w\+\s*'
+	let l:Pattern .= l:CommaPattern
+	let l:Pattern .= '$'
+
+	let l:IsFlagLiteral = (a:Line =~# l:Pattern)
+	"echo "GetEnumFlagValueStr: DEBUG: IsFlagLiteral=".l:IsFlagLiteral
+
+	if BoolNot(l:IsFlagLiteral)
+		return ""
+
+	else
+		"Here we have the enum flag literal
+
+		"Lets find the last from end digit or alpha numeric - it's our
+		"expression start
+		let expr_start_idx = -1
+		"And the first from end digit or alpha-numeri
+		" -it's our expression end
+		let expr_end_idx = -1
+		let l:i = len(a:Line) - 1
+			
+
+		while (expr_start_idx < 0) || (expr_end_idx < 0)
+			"echo "DEBUG: i=".l:i." val=".strpart(a:Line, l:i, 1)
+
+			"Here we found character, that can be a part of the
+			"string we search for
+			if(strpart(a:Line, l:i, 1) =~ '\w')
+				if(expr_end_idx < 0)
+					"End is not found yet
+					let expr_end_idx = l:i
+				endif
+			else
+				"Curr character is not part of the string we
+				"search for
+				if(expr_end_idx >= 0)
+					let expr_start_idx = l:i + 1
+				endif
+			endif
+
+			let l:i -= 1
+		endwhile
+
+		let l:FlagLiteralValue = strpart(a:Line, expr_start_idx, (expr_end_idx - expr_start_idx) + 1)
+		return l:FlagLiteralValue
+	endif
+	return "" "NOT literal
+:endfunction
+
+"Find line indices of all enum literals with assigned values of form "1 << N"
+:function! FindLineIndices_EnumFlagLiterals(Lines)
+	let l:LineIndices = []
+	let l:i = 0
+	while l:i < len(a:Lines)
+		if (GetEnumFlagValueStr(a:Lines[l:i]) != "")
+			:call add(l:LineIndices, l:i)
+		endif
+		let l:i += 1
+	endwhile
+	return l:LineIndices
+:endfunction
+
 :function! CalculateNumEnumLiterals(OpenBraceLineIndex, Lines)
 	:if BoolNot(AreLinesMeaningful(a:Lines) )
 		return 0	
