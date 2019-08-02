@@ -516,6 +516,17 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 	return a:Context[g:Context_NumEnumLiterals]
 :endfunction
 
+"Should we add +1 for indentation when adding into the given context?
+:function! ContextRequiresExtraIndentation(Context, Options)
+	let ContextType = GetContextType(a:Context)
+	if ((ContextType == g:ContextType_Global) || (ContextType == g:ContextType_Unknown))
+		"TODO: Here check for namespaces
+		return 0
+	else
+		return 1
+	endif
+:endfunction
+
 :function! GetCoreEchoContextLines(IsError, Msg, Context, EchoOptions)
 	let l:lines = []
 	let l:header_line = ""
@@ -589,7 +600,7 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 		"By default we ident on the level of the context PLUS one
 		"However, when a special argument is given, we indent on level
 		"of the context
-		if (a:Options !~# "NoPlusOneIndent;")
+		if ((a:Options !~# "NoPlusOneIndent;") && ContextRequiresExtraIndentation(a:Context, a:Options))
 			let IndentParam += 1
 		endif
 		:call IdentBlock(l:IndentedLines, IndentParam)
