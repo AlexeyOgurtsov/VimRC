@@ -309,9 +309,12 @@
 	let l:ClassLinesBelow = []
 	let l:LiteralLineAfter = ""
 	if IsEnumClassContextType(l:ContextType)
-		let l:ClassLinesAbove = GetUEnumClass_LinesAbove(l:IsFlags, l:OpsList, l:Name, l:Category)
-		let l:ClassLinesBelow = GetUEnumClass_LinesBelow(l:IsFlags, l:OpsList, l:Name, l:Category)
+		"Fixing name
+		let FixedName = GetFixedEnumOrClassName(l:EntityType, 0, 0, l:Name, l:Ops)
+		let l:ClassLinesAbove = GetUEnumClass_LinesAbove(l:IsFlags, l:OpsList, l:FixedName, l:Category)
+		let l:ClassLinesBelow = GetUEnumClass_LinesBelow(l:IsFlags, l:OpsList, l:FixedName, l:Category)
 	elseif IsEnumLiteralContextType(l:ContextType)
+		let FixedName = l:Name "No name fixing required when adding a literal
 		let l:LiteralSpecs = ""
 		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralValue, l:LiteralSpecs)
 	else
@@ -319,9 +322,6 @@
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")
 		return 0
 	endif
-
-	"Fixing name
-	let FixedName = GetFixedEnumOrClassName(l:EntityType, 0, 0, l:Name, l:Ops)
 
 	"Calling the cpp-level command
 	:let l:NewArgs = deepcopy(a:000)
