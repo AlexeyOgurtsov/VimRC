@@ -1404,6 +1404,7 @@ let g:MaxCount_BaseCmdArgs = 2
 
 	"Should we add an empty line before the literal?
 	let l:PrependLineBefore = l:AfterLiteral && BoolNot(l:EmptyLineBefore)
+	let l:PrependLineAfter = 0 "TODO: When we in the middle of enum, and no line after
 
 	let l:ShouldAddComma = l:AfterLiteral
 	let l:lines = []
@@ -1416,6 +1417,10 @@ let g:MaxCount_BaseCmdArgs = 2
 	"Main code
 	:call extend(l:lines, GetLines_EnumLiteral(l:ShouldAddComma, a:BaseArgs, a:Ops, a:Context, a:LineAfter, a:Name, a:ValueStr))
 
+	"Empty line after the literal
+	if(l:PrependLineAfter)
+		:call add(l:lines, "")
+	endif
 
 	" DEBUG {
 		":call EchoContext(0, "Debug context", a:Context, "")

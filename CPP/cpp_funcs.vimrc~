@@ -1404,6 +1404,7 @@ let g:MaxCount_BaseCmdArgs = 2
 
 	"Should we add an empty line before the literal?
 	let l:PrependLineBefore = l:AfterLiteral && BoolNot(l:EmptyLineBefore)
+	let l:PrependLineAfter = 0 "TODO: When we in the middle of enum, and no line after
 
 	let l:ShouldAddComma = l:AfterLiteral
 	let l:lines = []
