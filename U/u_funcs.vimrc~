@@ -240,13 +240,13 @@
 	return l:Lines
 :endfunction
 
-:function! IsUEnumSpecialHiddenLiteral(IsFlags, OpsList, Name, Value, Specs)
+:function! IsUEnumSpecialHiddenLiteral(IsFlags, OpsList, Name, ValueStr, Specs)
 	if(a:IsFlags)
 		if(a:Name == "Default" || a:Name == "None")
 			return 1
 		endif
 
-		if(a:Value == 0)
+		if(a:ValueStr == "0")
 			return 1
 		endif
 	endif
@@ -254,12 +254,12 @@
 	return 0
 :endfunction
 
-:function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, Value, Specs)
+:function! GetUEnumLiteral_LineAfter(IsFlags, OpsList, Name, ValueStr, Specs)
 	let l:MetaLine = ""
 	let l:Category = ""
 	let l:RealSpecs = a:Specs
 
-	if IsUEnumSpecialHiddenLiteral(a:IsFlags, a:OpsList, a:Name, a:Value, a:Specs)
+	if IsUEnumSpecialHiddenLiteral(a:IsFlags, a:OpsList, a:Name, a:ValueStr, a:Specs)
 		let l:RealSpecs .= "Hidden"
 	else
 		"Not special hidden literal!"
@@ -295,8 +295,6 @@
 		return 0
 	endif
 
-	" Literal value: if -1, then the value is not provided
-	let l:LiteralValue = -1 "TODO: get from arguments
 
 	"Checking args
 	let l:Name = l:MyArgs[l:NameArgIndex]
@@ -316,7 +314,9 @@
 	elseif IsEnumLiteralContextType(l:ContextType)
 		let FixedName = l:Name "No name fixing required when adding a literal
 		let l:LiteralSpecs = ""
-		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralValue, l:LiteralSpecs)
+		" Literal value str
+		let l:LiteralValueStr = GetOrDefault(l:MyArgs, 1, "")
+		let l:LiteralLineAfter = GetUEnumLiteral_LineAfter(l:IsFlags, l:OpsList, l:Name, l:LiteralValueStr, l:LiteralSpecs)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")

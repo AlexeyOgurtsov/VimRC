@@ -622,6 +622,21 @@ let g:Context_NumEnumLiterals = "ContextNumEnumLiterals"
 	return GetBestContext(GetCurrContext(a:Options))
 :endfunction
 
+"Returns true if the given line consists of whitespaces only or completely
+"empty
+:function! IsEmptyOrSpaced(Line)
+	return a:Line ~=# '^\s*$'
+:endfunction
+
+"Do we have empty line before (if no line before - false!)
+:function! EmptyOrSpacedLineBefore(LineIndex)
+	if(a:LineIndex <= 1)
+		return 0
+	endif
+
+	return IsEmptyOrSpaced(getline(a:LineIndex - 1))
+:endfunction
+
 "Add idented code lines of SINGLE file and automaticall perform necessary identation (for example, when
 "inside namespace, etc.)
 "-DOES automaticall jumps after end of the inserted block by itself
