@@ -334,6 +334,43 @@
 	endwhile
 :endfunction
 
+:function! GetNameWithFixedPrefix(Name, DesiredPrefix)
+	let LowerPrefix = tolower(a:DesiredPrefix)
+	lockvar LowerPrefix
+	let Prefix = toupper(a:DesiredPrefix)
+	lockvar Prefix
+	
+	let FixedName = copy(a:Name)
+
+	let IsLowerF = (FixedName[0] ==# LowerPrefix)
+
+	if(len(FixedName) > 1)
+		let IsUpperAfterF = (toupper(FixedName[1]) == FixedName[1])
+	else
+		let IsUpperAfterF = 0
+	endif
+
+	if IsLowerF && IsUpperAfterF
+		"When upper character right after lower F is specified,
+		"then we typically already included F as the prefix
+
+	else
+		"Appending F at the begging if not started with it
+		if ((FixedName[0] !=# Prefix))
+			let FixedName = Prefix.FixedName
+		endif
+	endif
+
+	let FixedName_TwoChars = strpart(FixedName, 0, 2)
+	let FixedName_Rest = strpart(FixedName, 2)
+
+	"Upper-casing first character after F if NOT upper-cased yet
+	let FixedName_TwoChars = toupper(FixedName_TwoChars)
+	let FixedName = FixedName_TwoChars.FixedName_Rest 
+
+	return FixedName
+:endfunction
+
 "function to be used for providing Not-yet-impl statements
 :function! GetLines_NotImplFunc_Default(ClassName, TemplParams, FuncName, Msg, OptionString)
 	let l:lines = []

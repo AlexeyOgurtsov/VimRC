@@ -1383,7 +1383,8 @@ let g:MaxCount_BaseCmdArgs = 2
 :endfunction
 
 :function! AddCode_EnumClass(BaseArgs, Ops, Context, LinesAbove, LinesBelow, Name)
-	let l:lines = GetLines_EnumClass( a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:LinesBelow, a:Name)
+	let l:FixedName = GetNameWithFixedPrefix(a:Name, "E")
+	let l:lines = GetLines_EnumClass( a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:LinesBelow, l:FixedName)
 	return AddCodeAt(a:Context, l:lines, [], a:Ops)
 :endfunction
 
@@ -1443,15 +1444,20 @@ let g:MaxCount_BaseCmdArgs = 2
 		if NoArg(1, l:MyArgs, "TemplParams", l:TemplParamsArgIndex)
 			return 0
 		endif
+		let l:NameArgIndex = l:TemplParamsArgIndex + 1
 		let l:TemplParams = GetTemplParamsArgument(l:MyArgs, l:TemplParamsArgIndex)
 		"Templ params name arg index is ONE (right after TemplParams)
-		let l:Name = l:MyArgs[1]
 	else
 		"Templ params name arg index is ZERO
 		let l:TemplParams = {}
-		let l:Name = l:MyArgs[0]
+		let l:NameArgIndex = 0
 	endif
-	lockvar l:Name
+	let l:FixedName = l:MyArgs[l:NameArgIndex]
+	let IsReallyTempl = l:TemplParams != {}
+	if IsReallyTempl
+		let l:FixedName = GetNameWithFixedPrefix(l:FixedName, "T")
+	endif
+	lockvar l:FixedName
 
 	let l:IsStruct = GetKey_IntType(l:BaseArgs, "IsStruct")
 	let l:ExtraPrivateLinesAbove = GetKey_ListType(l:BaseArgs, "ExtraPrivateLinesAbove")
@@ -1465,7 +1471,7 @@ let g:MaxCount_BaseCmdArgs = 2
 	"DEBUG }
 	
 	if IsClassContextType(l:ContextType)
-		:call AddCode_CppClass_GeneralDefault(l:IsStruct, l:Name, l:TemplParams, l:Ops, l:ExtraPrivateLinesAbove, l:ExtraLinesAbove)
+		:call AddCode_CppClass_GeneralDefault(l:IsStruct, l:FixedName, l:TemplParams, l:Ops, l:ExtraPrivateLinesAbove, l:ExtraLinesAbove)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")

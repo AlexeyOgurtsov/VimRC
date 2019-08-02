@@ -42,37 +42,34 @@
 
 " Fixed name of UClass/UStruct/UEnum
 :function! GetFixedEnumOrClassName(ContextType, IsStruct, IsTempl, Name, Ops)
-	"TODO: Check for type
+	let ShouldFixPrefix = 1
 
-	let FixedName = copy(a:Name)
-
-	let IsLowerF = (FixedName[0] ==# 'f')
-
-	if(len(FixedName) > 1)
-		let IsUpperAfterF = (toupper(FixedName[1]) == FixedName[1])
-	else
-		let IsUpperAfterF = 0
-	endif
-
-	if IsLowerF && IsUpperAfterF
-		"When upper character right after lower F is specified,
-		"then we typically already included F as the prefix
-
-	else
-		"Appending F at the begging if not started with it
-		if ((FixedName[0] !=# 'F'))
-			let FixedName = 'F'.FixedName
+	if(a:ContextType == g:ContextType_Class)
+		if a:IsTempl
+			let DesiredPrefix = "T"
+		else
+			"Non templ"
+			if a:IsStruct
+				let DesiredPrefix = "F"
+			else
+				"If UClass, then we do NOT known by default its type
+				"(maybe A, maybe U)
+				"let DesiredPrefix = "U"
+				let ShouldFixPrefix = 0
+			endif
 		endif
+	elseif (a:ContextType == g:ContextType_Enum)
+		let DesiredPrefix = "E"
+	else
+		"Unknown type or function
+		let ShouldFixPrefix = 0
 	endif
 
-	let FixedName_TwoChars = strpart(FixedName, 0, 2)
-	let FixedName_Rest = strpart(FixedName, 2)
-
-	"Upper-casing first character after F if NOT upper-cased yet
-	let FixedName_TwoChars = toupper(FixedName_TwoChars)
-	let FixedName = FixedName_TwoChars.FixedName_Rest 
-
-	return FixedName
+	if ShouldFixPrefix
+		return GetNameWithFixedPrefix(a:Name, DesiredPrefix)
+	else
+		return a:Name
+	endif
 :endfunction
 
 "Returns dictionary of context at the given line from the current buffer
@@ -141,10 +138,6 @@
 	"command used!
 	if l:IsTempl
 		let l:NameArgIndex = 1 
-		if ( l:Ops !~# ";Force;")
-			echoerr "Template UStruct/UClass are not supported by Unreal Engine for now (use ;Force; to add)"	
-			return
-		endif
 	else
 		"NON templ class
 		let l:NameArgIndex = 0 
@@ -152,11 +145,24 @@
 	let l:CategoryArgIndex = (l:NameArgIndex + 1)
 	let l:Category = GetOrDefault(l:MyArgs, l:CategoryArgIndex, "Misc")
 
+	let TemplParams = {} " TODO
+	let IsReallyTempl = l:TemplParams != {} 
+	if IsReallyTempl
+		if ( l:Ops !~# ";Force;")
+			echoerr "Template UStruct/UClass are not supported by Unreal Engine for now (use ;Force; to add)"	
+			return
+		endif
+	endif
+
 	"Updaing new arguments
 	let NewArgs = deepcopy(a:000)
 
 	"Update name	
-	let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = GetFixedEnumOrClassName(l:EntityType, l:IsStruct, l:IsTempl, l:MyArgs[NameArgIndex], l:Ops)
+	let FixedName = GetFixedEnumOrClassName(l:EntityType, l:IsStruct, l:IsTempl, l:MyArgs[NameArgIndex], l:Ops)
+	"DEBUG {
+	"echo "CmdFunc_AddCode_UClass: DEBUG: FixefName: ".FixedName
+	"DEBUG }
+	let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = FixedName
 
 	"Update U-specific lines (header above and class above)
 	let l:NewArgs[g:BaseArgsIndex]["ExtraPrivateLinesAbove"] = [] "We must always add a key
@@ -246,6 +252,8 @@
 
 "Argumetns: see the corresponding command
 :function! CmdFunc_AddCode_UEnumOrLiteral(...)
+	let l:EntityType = g:ContextType_Enum
+
 	let l:Context = {}
 	let l:BaseArgs = {}
 	let l:OpsList = []
@@ -255,13 +263,16 @@
 	endif
 	let l:Ops = l:OpsList[0]
 
+	"TODO: Does it depend on somethif (name index)
+	let l:NameArgIndex = 0
+
 	"Checking custom args
-	if NoArg(1, l:MyArgs, "Name", 0)
+	if NoArg(1, l:MyArgs, "Name", l:NameArgIndex)
 		return 0
 	endif
 
 	"Checking args
-	let l:Name = l:MyArgs[0]
+	let l:Name = l:MyArgs[l:NameArgIndex]
 	let l:Category = GetOrDefault(l:MyArgs, 1, "Misc")
 
 	let l:IsFlags = (l:Ops =~# "Flags;")
@@ -282,8 +293,12 @@
 		return 0
 	endif
 
+	"Fixing name
+	let FixedName = GetFixedEnumOrClassName(l:EntityType, 0, 0, l:Name, l:Ops)
+
 	"Calling the cpp-level command
-	:let l:NewArgs = copy(a:000)
+	:let l:NewArgs = deepcopy(a:000)
+	:let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = FixedName
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
 	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesBelow"] = l:ClassLinesBelow
 	:let l:NewArgs[g:BaseArgsIndex]["LiteralLineAfter"] = l:LiteralLineAfter
