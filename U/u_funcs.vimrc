@@ -267,7 +267,7 @@
 		if a:IsFlags
 			if (MaxEnumFlag_LineIndex >= 0)
 				"echo "DEBUG: Here"
-				return GetFlagEnumLiteralValueStr(str2nr(MaxEnumFlagValue) + 1, a:Ops)
+				return GetFlagEnumLiteralValueStr(MaxEnumFlagValue + 1, a:Ops)
 			else 
 				"No flag defined yet, define the first one
 				return GetFlagEnumLiteralValueStr(0, a:Ops)

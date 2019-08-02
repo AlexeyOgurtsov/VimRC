@@ -61,6 +61,8 @@
 
 	else
 		"Here we have the enum flag literal
+		
+		let AfterShiftIndex = strridx(a:Line, "<<") + len("<<")
 
 		"Lets find the last from end digit or alpha numeric - it's our
 		"expression start
@@ -68,29 +70,32 @@
 		"And the first from end digit or alpha-numeri
 		" -it's our expression end
 		let expr_end_idx = -1
-		let l:i = len(a:Line) - 1
+		let l:i = AfterShiftIndex "OLD: len(a:Line) - 1
 			
 
-		while (expr_start_idx < 0) || (expr_end_idx < 0)
+		while ((expr_start_idx < 0) || (expr_end_idx < 0)) && (l:i < len(a:Line))
 			"echo "DEBUG: i=".l:i." val=".strpart(a:Line, l:i, 1)
 
 			"Here we found character, that can be a part of the
 			"string we search for
 			if(strpart(a:Line, l:i, 1) =~ '\w')
-				if(expr_end_idx < 0)
-					"End is not found yet
-					let expr_end_idx = l:i
+				if(expr_start_idx < 0)
+					"Start is not found yet
+					let expr_start_idx = l:i
 				endif
 			else
 				"Curr character is not part of the string we
 				"search for
-				if(expr_end_idx >= 0)
-					let expr_start_idx = l:i + 1
+				if(expr_start_idx >= 0)
+					let expr_end_idx = l:i - 1
 				endif
 			endif
 
-			let l:i -= 1
+			let l:i += 1
 		endwhile
+		if(l:expr_end_idx < 0)
+			let l:expr_end_idx = len(a:Line) - 1
+		endif
 
 		let l:FlagLiteralValue = strpart(a:Line, expr_start_idx, (expr_end_idx - expr_start_idx) + 1)
 		return l:FlagLiteralValue
@@ -125,7 +130,6 @@
 	let a:OutContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(a:LinesInsideBody)
 
 	let EnumFlag_LineIndices  = FindLineIndices_EnumFlagLiterals(a:LinesInsideBody)
-	let l:i = 0
 
 	let l:MinimalEnumFlag_LineIndex = -1
 	let l:MaxEnumFlag_LineIndex = -1
@@ -135,6 +139,7 @@
 	let l:MaxEnumFlag_Value = 0
 	let l:FirstHole_Value = 0
 
+	let l:i = 0
 	while l:i < len(EnumFlag_LineIndices)
 		let LineIndex = EnumFlag_LineIndices[l:i]
 		let line = a:LinesInsideBody[LineIndex]
@@ -142,7 +147,7 @@
 
 		let IsNumberFlagShift = (EnumFlagShiftValue =~# '^\d\+$')
 		if IsNumberFlagShift
-			let NumberFlagShift = str2nr(IsNumberFlagShift)
+			let NumberFlagShift = str2nr(EnumFlagShiftValue)
 
 			if(l:MinimalEnumFlag_LineIndex < 0 || (l:MinimalEnumFlag_Value > NumberFlagShift))
 				let l:MinimalEnumFlag_LineIndex = LineIndex
