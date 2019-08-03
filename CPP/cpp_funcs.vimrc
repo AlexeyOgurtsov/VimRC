@@ -974,12 +974,12 @@
 "* Add destruction function (based on options)
 :function! GetLines_CppDestructorFunc(OutDefinition, ClassName, TemplParams, OptionString)
 	"Virtual
-	let l:IsVirtualDtor = (a:OptionString =~ "VirtDtor;") || (a:OptionString =~ "I;")
+	let l:IsVirtualDtor = (a:OptionString =~? ";VirtDtor;") || (a:OptionString =~? ";I;")
 	"Default/Delete
-	let l:IsDef = (a:OptionString !~ "Cust;") && (a:OptionString !~ "CustDtor;") && (a:OptionString !~ "Ptr;")
+	let l:IsDef = (a:OptionString !~? ";Cust;") && (a:OptionString !~? ";CustDtor;") && (a:OptionString !~? ";Ptr;")
 	let l:IsDeleted = 0 "TODO
-	let l:ShouldInline = (a:OptionString =~ "Inline;") || (a:OptionString =~ "InlineDtor;")
-	let l:NoImpl = (a:OptionString =~ "NoImpl;") || (a:OptionString =~ "NoImplDtor;")
+	let l:ShouldInline = (a:OptionString =~? ";Inline;") || (a:OptionString =~? ";InlineDtor;")
+	let l:NoImpl = (a:OptionString =~? ";NoImpl;") || (a:OptionString =~? ";NoImplDtor;")
 	"Forming result
 	let l:PublicDeclaration = []
 		let l:FunctionName = '~' .  a:ClassName "As we have destructor, function name is the same as class + ~
@@ -990,19 +990,19 @@
 		let l:ContentString = ""
 		:lockvar l:ContentString
 		:if l:IsVirtualDtor
-			let l:FuncOptions = l:FuncOptions . "Virt;"
+			let l:FuncOptions = l:FuncOptions . ";Virt;"
 		:endif
 		:if l:IsDef
-			let l:FuncOptions = l:FuncOptions . "Def;"
+			let l:FuncOptions = l:FuncOptions . ";Def;"
 		:endif
 		:if l:IsDeleted
-			let l:FuncOptions = l:FuncOptions . "Delete;"
+			let l:FuncOptions = l:FuncOptions . ";Delete;"
 		:endif
 		:if l:ShouldInline
-			let l:FuncOptions = l:FuncOptions . "Inline;"
+			let l:FuncOptions = l:FuncOptions . ";Inline;"
 		:endif
 		:if l:NoImpl
-			let l:FuncOptions = l:FuncOptions . "NoImpl;"
+			let l:FuncOptions = l:FuncOptions . ";NoImpl;"
 		:endif
 		let l:decl = GetLines_CppFunc(a:OutDefinition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
 		"TODO: Why we extend public always? How about private part?
@@ -1849,6 +1849,38 @@ let g:MaxCount_BaseCmdArgs = 2
 	:call AddCodeAt(a:Context, l:public_lines, l:priv_lines, a:Ops)
 :endfunction
 
+:function! IsCppAnyCtorName(ClassName, Name)
+	return a:ClassName == a:Name
+:endfunction
+
+:function! IsCppDestructorName(ClassName, Name)
+	return ('~'.a:ClassName) == a:Name
+:endfunction
+
+:function! IsCppInterfaceName(Name)
+	return a:Name =~# ("^I.*")
+:endfunction
+
+:function! GetCppFunction_ReturnTypeOrDefault(Context, ReturnType, Name, Ops)
+	let l:ContextType = GetContextType(a:Context)
+
+	" Is this is a special function without return type?
+	let l:NoReturnType = 0
+	if l:ContextType == g:ContextType_Class
+		let l:ClassName = GetContextClassName(a:Context)
+
+		if(IsCppAnyCtorName(l:ClassName, a:Name) || IsCppDestructorName(l:ClassName, a:Name))
+			let l:NoReturnType = 1
+		endif
+	endif
+
+	if(l:NoReturnType || (a:ReturnType != ''))
+		return a:ReturnType
+	else
+		return 'void'
+	endif
+:endfunction
+
 :function! CmdFunc_AddCode_CppFunction(...)
 	let l:Context = {}
 	let l:BaseArgs = {}
@@ -1877,7 +1909,6 @@ let g:MaxCount_BaseCmdArgs = 2
 		return 0
 	endif
 
-	let l:RetType = GetReturnType_FromExtractedDict(l:RetValAndArgs_Dict)
 	let l:FunctionArgs = GetFunctionArguments_FromExtractedDict(l:RetValAndArgs_Dict)
 	let l:Comment = GetComment_FromExtractedDict(l:RetValAndArgs_Dict)
 	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RetValAndArgs_Dict)
@@ -1885,6 +1916,26 @@ let g:MaxCount_BaseCmdArgs = 2
 
 	"Update the global ops with extra ops:
 	let l:Ops .= ';'.l:ExtraOps.';'
+
+	"Calculate class name based on context
+	if( l:ContextType == g:ContextType_Class )
+		let l:ClassName = GetContextClassName(l:Context)
+	else
+		let l:ClassName = ''
+	endif
+
+	"Return type
+	let l:RetType = GetCppFunction_ReturnTypeOrDefault(l:Context, GetReturnType_FromExtractedDict(l:RetValAndArgs_Dict), l:Name, l:Ops)
+
+	"Update options based on context
+	if( l:ContextType == g:ContextType_Class )
+		let IsInterfaceClass = IsCppInterfaceName(l:ClassName)
+		
+		"For interface classes by default virtual functions are used
+		if (IsInterfaceClass && (l:Ops !~#";NoVirt;" ))
+			let l:Ops .= ';Virt;'
+		endif
+	endif
 
 	"DEBUG {
 		let l:ShowDebugLines = 0

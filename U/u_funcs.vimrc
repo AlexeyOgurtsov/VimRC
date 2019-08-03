@@ -405,11 +405,57 @@
 	return 1
 :endfunction
 
+:function! IsUInterfaceName(Name)
+	return a:Name =~# ("^I.*")
+:endfunction
+
 :function! GetUFunction_LinesAbove(Context, Category, Name, RetVal, FuncArgs, Ops)
+	let l:ClassName = GetContextClassName(a:Context)
+
 	let lines = []
-	"TODO
+	
 	let l:Specs = ""
 	let l:MetaLine = ""
+
+	let l:IsInterfaceClass = IsUInterfaceName(l:ClassName)
+
+	"Are we using blueprint?
+	let l:UseBP = (a:Ops !~? ";NoBP;")
+	"Is constant function?
+	let l:IsConst = (a:Ops =~? ";C;") || (a:Ops =~? ";Const;") || (a:Ops =~? ";Get;")
+
+	if(l:UseBP)
+		let l:IsBPNativeOption = (a:Ops =~? ";BPNat;") || (a:Ops =~? ";BPNative;") || (a:Ops =~? ";Nat;")  || (a:Ops =~? ";Native;")
+		let l:IsBPNative = l:IsBPNativeOption || l:IsInterfaceClass
+
+		let BPFuncSpec = ""
+		if(l:IsConst)
+			let BPFuncSpec = "BlueprintPure"
+		else
+			let BPFuncSpec = "BlueprintCallable"
+		endif
+
+		let BPNativeSpec = ""
+		if(l:IsBPNative)
+			let BPNativeSpec = "BlueprintNativeEvent"
+		endif
+
+		"Blueprint function specifier is to be the first element (for
+		"consistency)
+		if(len(BPFuncSpec) > 0)
+		let l:Specs .= BPFuncSpec
+
+		"Blueprint native specifier
+		if(len(BPNativeSpec) > 0)
+			if(len(l:Specs) > 0)
+				let l:Specs .= ', '
+			endif
+			let l:Specs .= BPNativeSpec
+		endif
+	endif
+	endif
+
+
 	:call add(lines, GetUFunctionLine(l:Specs, l:MetaLine, a:Category))
 	return lines
 :endfunction
