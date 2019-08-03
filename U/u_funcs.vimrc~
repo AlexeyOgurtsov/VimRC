@@ -409,6 +409,17 @@
 	return a:Name =~# ("^I.*")
 :endfunction
 
+:function! IsBPNativeOp(Ops)
+	let l:IsBPNativeOption = (a:Ops =~? ";BPNat;") || (a:Ops =~? ";BPNative;") || (a:Ops =~? ";Nat;")  || (a:Ops =~? ";Native;")
+	return l:IsBPNativeOption
+:endfunction
+
+:function! IsReallyBPNative(ClassName, Ops)
+	let l:IsInterfaceClass = IsUInterfaceName(a:ClassName)
+	let l:IsBPNativeOption = IsBPNativeOp(a:Ops)
+	return l:IsBPNativeOption || l:IsInterfaceClass
+:endfunction
+
 :function! GetUFunction_LinesAbove(Context, Category, Name, RetVal, FuncArgs, Ops)
 	let l:ClassName = GetContextClassName(a:Context)
 
@@ -417,7 +428,7 @@
 	let l:Specs = ""
 	let l:MetaLine = ""
 
-	let l:IsInterfaceClass = IsUInterfaceName(ClassName)
+	let l:IsInterfaceClass = IsUInterfaceName(l:ClassName)
 
 	"Are we using blueprint?
 	let l:UseBP = (a:Ops !~? ";NoBP;")
@@ -425,9 +436,8 @@
 	let l:IsConst = (a:Ops =~? ";C;") || (a:Ops =~? ";Const;") || (a:Ops =~? ";Get;")
 
 	if(l:UseBP)
-		let l:IsBPNativeOption = (a:Ops =~? ";BPNat;") || (a:Ops =~? ";BPNative;") || (a:Ops =~? ";Nat;")  || (a:Ops =~? ";Native;")
-		let l:IsBPNative = l:IsBPNativeOption || l:IsInterfaceClass
-
+		let l:IsBPNativeOption = IsBPNativeOp(a:Ops)
+		let l:IsBPNative = IsReallyBPNative(l:ClassName, a:Ops)
 		let BPFuncSpec = ""
 		if(l:IsConst)
 			let BPFuncSpec = "BlueprintPure"
@@ -498,17 +508,32 @@
 	"Update the global ops with extra ops:
 	let l:Ops .= ';'.l:ExtraOps.';'
 
+	"Calculate class name based on context
+	if( l:ContextType == g:ContextType_Class )
+		let l:ClassName = GetContextClassName(l:Context)
+	else
+		let l:ClassName = ''
+	endif
+
 	"Getting custom args
 	let l:Name = l:MyArgs[l:NameArgIndex]
 	let l:Category = StringOrDefaultIfEmpty(GetJoinedCategories_FromExtractedDict(l:RetValAndArgs_Dict), "Misc")
 
 	:let l:LinesAbove = GetUFunction_LinesAbove(l:Context, l:Category, l:Name, l:RetType, l:FunctionArgs, l:Ops)
 
+	"Update ops
+	let l:BpNative = IsReallyBPNative(l:ClassName, l:Ops)
+	if (l:BpNative)	
+		"BlueprintNativeEvent NEVER virtual!
+		let l:Ops .= ";NoVirt;"
+	endif
+
 	"Calling the Cpp-level command
 	:let l:NewArgs = deepcopy(a:000)
 
 	"TODO
 	":let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = FixedName
+	:let l:NewArgs[1] = l:Ops "Options
 	:let l:NewArgs[g:BaseArgsIndex]["LinesAbove"] = l:LinesAbove
 	:call call(function("CmdFunc_AddCode_CppFunction"), l:NewArgs)
 :endfunction
