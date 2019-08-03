@@ -500,8 +500,14 @@
 "Function member class prefix string
 " WARNING! DOES include ::
 :function! GetCppClassMemberPrefix(ClassName, TemplParams)
-	let l:IsWithClass = 0
-	return a:ClassName . GetTemplParamsString(a:TemplParams, l:IsWithClass) . "::"
+	let l:IsWithClass = (len(a:ClassName) > 0)
+	let l:Res = ""
+	if (l:IsWithClass)
+		let l:Res .= a:ClassName
+        	let l:Res .= GetTemplParamsString(a:TemplParams, l:IsWithClass)
+	       	let l:Res .= "::"
+	endif
+	return l:Res
 :endfunction
 "Generates string of form Name(ContentString) [const]
 :function! GetLine_CppFunc_NameArgs_AndSpecs(Name, ContentString, OptionString)
