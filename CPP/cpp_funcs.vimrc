@@ -629,7 +629,7 @@
 "Generates string of form Name(ContentString) [const]
 :function! GetLine_CppFunc_NameArgs_AndSpecs(Name, ContentString, OptionString)
 	let l:res_s = a:Name.'('.a:ContentString.')'
-	:if (a:OptionString =~ "Const;")
+	:if (a:OptionString =~? ";c;") || (a:OptionString =~? ";const;") || (a:OptionString =~? ";Get;")
 		let l:res_s = l:res_s . " const"
 	:endif
 	return l:res_s
@@ -640,8 +640,12 @@
 "* WARNING ; not appended!
 :function! GetLine_CppFuncDecl_General(Name, ContentString, ReturnType, OptionString)
 	let l:declaration_string = ""
+	"static if necessary"
+	:if (a:OptionString =~? ";S;") || (a:OptionString =~? ";Stat;")
+		let l:declaration_string = l:declaration_string . "static "	
+	:endif
 	"Virtual if necessary"
-	:if a:OptionString =~ "Virt;"
+	:if (a:OptionString =~? ";Virt;") || (a:OptionString =~? ";V;")
 		let l:declaration_string = l:declaration_string . "virtual "	
 	:endif
 	"" Return type
@@ -650,14 +654,14 @@
 		let l:declaration_string = l:declaration_string . " "	
 	:endif
 	let l:declaration_string = l:declaration_string. GetLine_CppFunc_NameArgs_AndSpecs(a:Name, a:ContentString, a:OptionString)
-	:if a:OptionString =~ "Def;"
+	:if a:OptionString =~? ";Def;"
 		let l:declaration_string = l:declaration_string . " =default"	
 	:endif
-	:if a:OptionString =~ "Delete;"
+	:if (a:OptionString =~? ";Delete;") || (a:OptionString =~? ";Del;")
 		let l:declaration_string = l:declaration_string . " =delete"	
 	:endif
 	"Forming prefix
-	:if (a:OptionString =~ "Over;")
+	:if ((a:OptionString =~? ";Over;") || (a:OptionString =~? ";Ov;"))
 		let l:declaration_string = l:declaration_string . " override"
 	:endif
 	:call DebugEcho("DEBUG: GetLine_CppFuncDecl_General: OptionString=". a:OptionString)
