@@ -456,14 +456,14 @@
 	let l:Name = l:MyArgs[l:NameArgIndex]
 	let l:Category = StringOrDefaultIfEmpty(GetJoinedCategories_FromExtractedDict(l:RetValAndArgs_Dict), "Misc")
 
-	:let l:ClassLinesAbove = GetUFunction_LinesAbove(l:Context, l:Category, l:Name, l:RetType, l:FunctionArgs, l:Ops)
+	:let l:LinesAbove = GetUFunction_LinesAbove(l:Context, l:Category, l:Name, l:RetType, l:FunctionArgs, l:Ops)
 
 	"Calling the Cpp-level command
 	:let l:NewArgs = deepcopy(a:000)
 
 	"TODO
 	":let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = FixedName
-	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
+	:let l:NewArgs[g:BaseArgsIndex]["LinesAbove"] = l:LinesAbove
 	:call call(function("CmdFunc_AddCode_CppFunction"), l:NewArgs)
 :endfunction
 

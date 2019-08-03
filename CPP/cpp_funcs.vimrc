@@ -1697,8 +1697,28 @@ let g:MaxCount_BaseCmdArgs = 2
 	return 1
 :endfunction
 
+"CppFunction + advanced options (like, for example, ClassLinesAbove etc.)
+"and parses context
+:function! GetLines_CppFunction_Advanced(OutDefinition, Context, BaseArgs, Name, Category, RetType, FunctionArgs, Comment, Ops)
+	let l:ClassName = '' "TODO: Parse class name from context
+	let l:TemplParams = {} "TODO: Pass templ params
+
+	let l:public_lines = []
+	let l:priv_lines = []
+
+	:call extend(l:public_lines, GetKey_ListType(a:BaseArgs, "LinesAbove"))
+	:call extend(l:public_lines, GetLines_CppFunc(a:OutDefinition, a:Name, l:ClassName, l:TemplParams, a:FunctionArgs, a:RetType, a:Ops))
+
+	return l:public_lines
+:endfunction
+
 :function! AddCode_CppFunction(Context, BaseArgs, Name, Category, RetType, FunctionArgs, Comment, Ops)
-	"TODO
+	let l:public_lines = []
+	let l:priv_lines = []
+
+	:call extend(l:public_lines, GetLines_CppFunction_Advanced(l:priv_lines, a:Context, a:BaseArgs, a:Name, a:Category, a:RetType, a:FunctionArgs, a:Comment, a:Ops))
+
+	:call AddCodeAt(a:Context, l:public_lines, l:priv_lines, a:Ops)
 :endfunction
 
 :function! CmdFunc_AddCode_CppFunction(...)
