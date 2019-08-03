@@ -1040,7 +1040,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 	"Cursor
 	if(a:Options !~# ";LockCur;")
-		:call JumpAfterAt(l:LineNumber, a:Lines)
+		:call JumpAfterAt(l:LineNumber, l:IndentedLines)
 	endif
 	return EndLineIndex
 :endfunction

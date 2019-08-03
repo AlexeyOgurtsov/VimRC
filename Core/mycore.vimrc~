@@ -942,14 +942,14 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	endif
 
 	"Class name and namespace
-	:call add(l:lines, "ClassName: ".GetContextClassName(a:Context))
-	:call add(l:lines, "NamespacePath: ".GetContextNamespacePath(a:Context))
+	:call add(l:lines, "ClassName: ".string(GetContextClassName(a:Context)))
+	:call add(l:lines, "NamespacePath: ".string(GetContextNamespacePath(a:Context)))
 
 	if(ContextType == g:ContextType_Class)
-		:call add(l:lines, "IsStruct: ".GetContextIsStruct(a:Context))
-		:call add(l:lines, "PublicLineIndex: ".GetContextClass_PublicLine(a:Context))
-		:call add(l:lines, "PrivateLineIndex: ".GetContextClass_PrivateLine(a:Context))
-		:call add(l:lines, "ProtectedLineIndex: ".GetContextClass_ProtectedLine(a:Context))
+		:call add(l:lines, "IsStruct: ".string(GetContextIsStruct(a:Context)))
+		:call add(l:lines, "PublicLineIndex: ".string(GetContextClass_PublicLine(a:Context)))
+		:call add(l:lines, "PrivateLineIndex: ".string(GetContextClass_PrivateLine(a:Context)))
+		:call add(l:lines, "ProtectedLineIndex: ".string(GetContextClass_ProtectedLine(a:Context)))
 	endif
 
 	:call add(l:lines, "IndentationParam: ".GetContextIndentationParam(a:Context))

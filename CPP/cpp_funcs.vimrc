@@ -645,7 +645,10 @@
 		let l:declaration_string = l:declaration_string . "static "	
 	:endif
 	"Virtual if necessary"
-	:if (a:OptionString =~? ";Virt;") || (a:OptionString =~? ";V;")
+	let l:IsPureVirtual = (a:OptionString =~? ";Pure;") || (a:OptionString =~? ";PureV;") || (a:OptionString =~? ";PureVirt;")
+	let l:IsVirtual = (a:OptionString =~? ";Virt;") || (a:OptionString =~? ";V;") || (l:IsPureVirtual)
+
+	:if l:IsVirtual
 		let l:declaration_string = l:declaration_string . "virtual "	
 	:endif
 	"" Return type
@@ -654,15 +657,18 @@
 		let l:declaration_string = l:declaration_string . " "	
 	:endif
 	let l:declaration_string = l:declaration_string. GetLine_CppFunc_NameArgs_AndSpecs(a:Name, a:ContentString, a:OptionString)
+	"Forming prefix
+	:if ((a:OptionString =~? ";Over;") || (a:OptionString =~? ";Ov;"))
+		let l:declaration_string = l:declaration_string . " override"
+	:endif
+	:if l:IsPureVirtual
+		let l:declaration_string = l:declaration_string . " =0"	
+	:endif
 	:if a:OptionString =~? ";Def;"
 		let l:declaration_string = l:declaration_string . " =default"	
 	:endif
 	:if (a:OptionString =~? ";Delete;") || (a:OptionString =~? ";Del;")
 		let l:declaration_string = l:declaration_string . " =delete"	
-	:endif
-	"Forming prefix
-	:if ((a:OptionString =~? ";Over;") || (a:OptionString =~? ";Ov;"))
-		let l:declaration_string = l:declaration_string . " override"
 	:endif
 	:call DebugEcho("DEBUG: GetLine_CppFuncDecl_General: OptionString=". a:OptionString)
 	:call DebugEcho("DEBUG: GetLine_CppFuncDecl_General: declaration_string=". l:declaration_string)
@@ -820,10 +826,10 @@
 	let l:header_line = GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString)
 	let l:ReturnStmt = GetLines_DefaultReturnStmt(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
 	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, a:ContentString, a:ReturnType, a:OptionString)
-	let l:ShouldInline = (a:OptionString =~ "Inline;") || (len(a:TemplParams) > 0)
+	let l:ShouldInline = (a:OptionString =~? ";Inline;") || (len(a:TemplParams) > 0)
 	:call DebugEcho("Debug: GetLines_CppFunc: ShouldInline: ".l:ShouldInline)
 	let l:ShouldNotInline = BoolNot(l:ShouldInline)
-	:let l:GenImpl = (a:OptionString !~ "NoImpl;") && (a:OptionString !~ "Def;")
+	:let l:GenImpl = (a:OptionString !~? ";NoImpl;") && (a:OptionString !~? ";Def;")
 	:lockvar l:GenImpl
 	"Debug
 	:call DebugEcho("Debug: GetLines_CppFunc: GenImpl: ".l:GenImpl)
@@ -1288,7 +1294,9 @@
 	let l:PublicLines = GetLines_CppClass_General(l:PrivLines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove, a:ExtraLinesAbove)
 	"Add code"
 	let l:Context = ContextOrCurr({}, a:OptionString)
-	:call AddCodeAt(l:Context, l:PublicLines, l:PrivLines, a:OptionString)
+
+	let l:Ops = a:OptionString.";PrepLineAfter;"
+	:call AddCodeAt(l:Context, l:PublicLines, l:PrivLines, l:Ops)
 	"TODO Cursor jumping
 :endfunction
 " Adds code of cpp struct with default options
@@ -1522,10 +1530,8 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:variable_lines = GetLines_CppVarOrField(l:variable_cpp_lines, a:IsField, a:LinesAbove, a:OptionString, a:TypeName, a:Name, a:InitExpr)
 
 	"Add code
-	let l:InsertionStartLine = AddCodeAt(GetContextAt(line('.')), l:variable_lines, l:variable_cpp_lines, a:OptionString)
-
-	"We should jump after the inserted lines
-	:call JumpAfterAt(l:InsertionStartLine, l:variable_lines)
+	let l:NewOps = a:OptionString.";PrepLineAfter;"
+	let l:InsertionStartLine = AddCodeAt(GetContextAt(line('.')), l:variable_lines, l:variable_cpp_lines, l:NewOps)
 :endfunction
 
 " Adds variable or field 
@@ -1658,7 +1664,8 @@ let g:MaxCount_BaseCmdArgs = 2
 :function! AddCode_EnumClass(BaseArgs, Ops, Context, LinesAbove, LinesBelow, Name)
 	let l:FixedName = GetNameWithFixedPrefix(a:Name, "E")
 	let l:lines = GetLines_EnumClass( a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:LinesBelow, l:FixedName)
-	return AddCodeAt(a:Context, l:lines, [], a:Ops)
+	let l:NewOps = a:Ops.";PrepLineAfter;"
+	return AddCodeAt(a:Context, l:lines, [], l:NewOps)
 :endfunction
 
 :function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name, ValueStr)
@@ -1846,7 +1853,8 @@ let g:MaxCount_BaseCmdArgs = 2
 
 	:call extend(l:public_lines, GetLines_CppFunction_Advanced(l:priv_lines, a:Context, a:BaseArgs, a:Name, a:Category, a:RetType, a:FunctionArgs, a:Comment, a:Ops))
 
-	:call AddCodeAt(a:Context, l:public_lines, l:priv_lines, a:Ops)
+	let l:NewOps = a:Ops.';PrepLineAfter;'
+	:call AddCodeAt(a:Context, l:public_lines, l:priv_lines, l:NewOps)
 :endfunction
 
 :function! IsCppAnyCtorName(ClassName, Name)
@@ -1933,7 +1941,7 @@ let g:MaxCount_BaseCmdArgs = 2
 		
 		"For interface classes by default virtual functions are used
 		if (IsInterfaceClass && (l:Ops !~#";NoVirt;" ))
-			let l:Ops .= ';Virt;'
+			let l:Ops .= ';PureVirt;'
 		endif
 	endif
 
