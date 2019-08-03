@@ -20,6 +20,90 @@
 	return l:IsClass
 :endfunction
 
+
+"Return Cpp Class name from C++ class header
+"WARNING!!! The header must be valid!!!
+:function! GetCppClassName_FromHeader(HeaderLine)
+	let lexems = split(a:HeaderLine)	
+	let i = 0
+	while i < len(lexems)	
+		if(lexems[i] == 'class' || lexems[i] == 'struct')
+			let class_name_index = i + 1
+			let class_name = lexems[class_name_index]
+			return class_name
+		endif
+
+		let i += 1
+	endwhile
+	return ""
+:endfunction
+
+"Returns whether IsStruct class header
+"WARNING!!! The header must be valid class header!!!
+:function! GetIsStruct_FromHeader(HeaderLine)
+	let lexems = split(a:HeaderLine)	
+	let i = 0
+	while i < len(lexems)	
+		if(lexems[i] == 'struct')
+			return 1
+		endif
+
+		if(lexems[i] == 'class')
+			return 0
+		endif
+
+		let i += 1
+	endwhile
+	return ""
+:endfunction
+
+"Find line index of form "Spec:" in the given lines
+"(return -1 if not found)
+:function! FindAccessSpec_LineIndex(Lines, Spec)
+	let i = 0
+	while i < len(a:Lines)
+		let line = GetLeftSpacesTrimmed(a:Lines[i])
+
+		if(line =~# ('^'.a:Spec.':'))
+			return i
+		endif
+
+		let i += 1
+	endwhile	
+	return -1
+:endfunction
+
+:function! FindPrivate_LineIndex(Lines)
+	return FindAccessSpec_LineIndex(a:Lines, "private")
+:endfunction
+
+:function! FindPublic_LineIndex(Lines)
+	return FindAccessSpec_LineIndex(a:Lines, "public")
+:endfunction
+
+:function! FindProtected_LineIndex(Lines)
+	return FindAccessSpec_LineIndex(a:Lines, "protected")
+:endfunction
+
+:function! ComputeCppClassContext(OutContext, HeaderLine, LinesInsideBody, Options)
+	let IsDebugEcho = 0
+
+	"TODO: We should compute cpp class name generally (ever if context is
+	"not  class)
+	let a:OutContext[g:Context_ClassName] = GetCppClassName_FromHeader(a:HeaderLine)
+
+	let a:OutContext[g:Context_IsStruct] = GetIsStruct_FromHeader(a:HeaderLine)
+	let a:OutContext[g:Context_ClassPublicLineIndex] = FindPublic_LineIndex(a:LinesInsideBody)
+	let a:OutContext[g:Context_ClassPrivateLineIndex] = FindPrivate_LineIndex(a:LinesInsideBody)
+	let a:OutContext[g:Context_ClassProtectedLineIndex] = FindProtected_LineIndex(a:LinesInsideBody)
+
+	if IsDebugEcho
+		echo "DEBUG: ComputeCppClassContext: "
+		echo "HeaderLine: ".a:HeaderLine
+		:call EchoContext(0, "Context", a:OutContext, a:Options)
+	endif
+:endfunction
+
 "Determines, whether the given line string is cpp enum class header
 :function! IsCppEnumClassHeaderLine(Line, OutDecl)
 	let l:IsClassHeader = (a:Line =~# '^\s*enum\s*\(class\|\)\s*\(\w\+\)\s*\(\|:\s*\(\w\+\)\)\s*{*\s*$')
@@ -126,7 +210,7 @@
 
 :endfunction
 
-:function! ComputeCppEnumContext(OutContext, LinesInsideBody, Options)
+:function! ComputeCppEnumContext(OutContext, HeaderLine, LinesInsideBody, Options)
 	let a:OutContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(a:LinesInsideBody)
 
 	let EnumFlag_LineIndices  = FindLineIndices_EnumFlagLiterals(a:LinesInsideBody)
@@ -286,8 +370,14 @@
 		let LineIndex -= 1 
 	endwhile
 
+	"Assign context type as early as you can
+	let a:OutCppContext[g:Context_Type] = l:ContextType
+
 	if IsContextHeaderFound
-		let l:StartLine = (l:LineIndex + 1)
+		let l:HeaderLineIndex =  (l:LineIndex + 1)
+		let l:HeaderLine = getline(l:HeaderLineIndex)
+
+		let l:StartLine = l:HeaderLineIndex
 		let a:OutCppContext[g:Context_StartLine] = l:StartLine
 
 		let OpenBraceLineIndex = FindFirstFrom(l:StartLine, '{')
@@ -306,9 +396,9 @@
 		"echo "Debug: StartLine=".l:StartLine." OutCppContext[IndentationParam]=".a:OutCppContext[g:Context_IndentationParam]
 
 		if l:ContextType == g:ContextType_Enum
-			:call ComputeCppEnumContext(a:OutCppContext, LinesInsideBody, "")
+			:call ComputeCppEnumContext(a:OutCppContext, l:HeaderLine, LinesInsideBody, "")
 		elseif l:ContextType == g:ContextType_Class
-			"TODO
+			:call ComputeCppClassContext(a:OutCppContext, l:HeaderLine, LinesInsideBody, "")
 		elseif l:ContextType == g:ContextType_Function
 			"Other type
 		endif
@@ -321,7 +411,6 @@
 		let a:OutCppContext[g:Context_IndentationParam] = 0 "TODO: Calculate based on the current namespace
 	endif
 
-	let a:OutCppContext[g:Context_Type] = l:ContextType
 	return l:ContextType
 :endfunction
 
@@ -401,10 +490,32 @@
 	return []
 :endfunction
 
-:function! GetLines_GetVarOrFieldCommentText(IsField, TypeName, Name, InitExpr, OptionString)
+:function! GetLines_DefaultNamedCommentString_Text(Name, CommentString, OptionString)
+	let l:comm_lines = [ a:CommentString ] "TODO: Split by string
 	let l:lines = []
-	:call add(l:lines, a:Name)
+
+	let ShouldUseName = (a:CommentString == '')
+	"At this time we either use a comment or just name
+	let ShouldUseCommentStr = BoolNot(ShouldUseName)
+
+	if ShouldUseName
+		"Use name if comment lines are empty
+		:call add(l:lines, a:Name)
+	endif
+	if ShouldUseCommentStr
+		:call extend(l:lines, l:comm_lines)
+	endif
 	return l:lines
+:endfunction
+
+:function! GetLines_GetVarOrFieldCommentText(IsField, TypeName, Name, InitExpr, OptionString)
+	return GetLines_DefaultNamedCommentString_Text(a:Name, "", a:OptionString)
+:endfunction
+
+:function! GetLines_DefaultNamedComment_IfShould(IsAsterisk, Name, CommentString, Ops)
+	let l:CommentTextLines = GetLines_DefaultNamedCommentString_Text(a:Name, a:CommentString, a:Ops)
+	let l:CommentLines = GetLines_CppComment_IfShould(a:IsAsterisk, l:CommentTextLines, a:Ops)
+	return l:CommentLines
 :endfunction
 
 :function! GetLines_GetVarOrFieldComment_IfShould(IsField, TypeName, Name, InitExpr, OptionString)
@@ -420,8 +531,14 @@
 :endfunction
 
 :function! GetLines_EnumLiteralComment_IfShould(Name, Ops)
-	"TODO: ugly redirection
-	return GetLines_GetVarOrFieldComment_IfShould(0, "", a:Name, "", a:Ops)
+	let IsAsterisk = 1
+	let CommentString = "" "TODO: Take as argument
+	return GetLines_DefaultNamedComment_IfShould(IsAsterisk, a:Name, CommentString, a:Ops)
+:endfunction
+
+:function! GetLines_FunctionComment_IfShould(Name, CommentString, Ops)
+	let IsAsterisk = 1
+	return GetLines_DefaultNamedComment_IfShould(IsAsterisk, a:Name, a:CommentString, a:Ops)
 :endfunction
 
 "*** #Include directive
@@ -1706,12 +1823,13 @@ let g:MaxCount_BaseCmdArgs = 2
 "CppFunction + advanced options (like, for example, ClassLinesAbove etc.)
 "and parses context
 :function! GetLines_CppFunction_Advanced(OutDefinition, Context, BaseArgs, Name, Category, RetType, FunctionArgs, Comment, Ops)
-	let l:ClassName = '' "TODO: Parse class name from context
+	let l:ClassName = GetContextClassName(a:Context)
 	let l:TemplParams = {} "TODO: Pass templ params
 
 	let l:public_lines = []
 	let l:priv_lines = []
 
+	:call extend(l:public_lines, GetLines_FunctionComment_IfShould(a:Name, a:Comment, a:Ops))
 	:call extend(l:public_lines, GetKey_ListType(a:BaseArgs, "LinesAbove"))
 	:call extend(l:public_lines, GetLines_CppFunc(a:OutDefinition, a:Name, l:ClassName, l:TemplParams, a:FunctionArgs, a:RetType, a:Ops))
 

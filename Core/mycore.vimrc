@@ -305,7 +305,7 @@
 
 "Extracts default arguments + custom arguments from string
 :function! ExtractDefaultArguments(S, ExtraSeps)
-	let Seps = [ '!', ':', ';', '//']
+	let Seps = [ '!', ':', ';', '//', '~']
 	:call extend(Seps, a:ExtraSeps)
 
 	return ExtractArgumentsFromString(a:S, Seps)
@@ -334,6 +334,10 @@
 	else 
 		return a:S
 	endif
+:endfunction
+
+:function! GetSection_FromExtractedDict(Dict)
+	return GetSpacesTrimmed(GetJoinedArgument_FromDict(a:Dict, '~', ''))
 :endfunction
 
 :function! GetJoinedCategories_FromExtractedDict(Dict)
@@ -748,6 +752,23 @@ let g:Context_EndLine = "ContextEndLine"
 "All lines right after "{" abd just before "}"
 "(NOT determined for Unknown or GLOBAL!!!)
 let g:Context_LinesInsideBody = "ContextLinesInsideBody"
+"Is current class a struct (0 - for other contexts)"
+let g:Context_IsStruct = "ContextIsStruct"
+"First public line of class
+"-1 if context is not class context or line does not exist
+"(for struct - index of first line after AFTER_LINE)
+let g:Context_ClassPublicLineIndex = "ContextClassPublicLineIndex"
+let g:Context_ClassPrivateLineIndex = "ContextClassPrivateLineIndex"
+let g:Context_ClassProtectedLineIndex = "ContextClassProtectedLineIndex"
+"Class where are we inside now (no matter, whether we are inside class context
+"or inside other context"
+"(empty means we are NOT inside class)
+let g:Context_ClassName = "ContextClassName"
+"Path to the most inner namespace we are currently in
+"(no matter what context we are currently in"
+"(does NOT include the classname!")
+"Empty for global namespace or unknown context
+let g:Context_NamespacePath = "ContextNamespacePath" 
 "Indentation param of the heade line (for global - indentation of the inner
 "NAMESPACE is returned)
 let g:Context_IndentationParam = "ContextIndentationParam"
@@ -771,6 +792,17 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let l:res[g:Context_EndLine] = line('$')
 	let l:res[g:Context_LinesInsideBody] = []
 
+	"Class
+	let l:res[g:Context_IsStruct] = 0
+	let l:res[g:Context_ClassPublicLineIndex] = -1
+	let l:res[g:Context_ClassPrivateLineIndex] = -1
+	let l:res[g:Context_ClassProtectedLineIndex] = -1
+
+	"Class/Namespace"
+	let l:res[g:Context_ClassName] = ''
+	let l:res[g:Context_NamespacePath] = ''
+
+	"Formatting
 	let l:res[g:Context_IndentationParam] = 0
 
 	"Enums
@@ -810,6 +842,30 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 :function! GetContextLinesInsideBody(Context)
 	return a:Context[g:Context_LinesInsideBody]
+:endfunction
+
+:function! GetContextIsStruct(Context)
+	return a:Context[g:Context_IsStruct]
+:endfunction
+
+:function! GetContextClass_PublicLine(Context)
+	return a:Context[g:Context_ClassPublicLineIndex]
+:endfunction
+
+:function! GetContextClass_PrivateLine(Context)
+	return a:Context[g:Context_ClassPrivateLineIndex]
+:endfunction
+
+:function! GetContextClass_ProtectedLine(Context)
+	return a:Context[g:Context_ClassProtectedLineIndex]
+:endfunction
+
+:function! GetContextClassName(Context)
+	return a:Context[g:Context_ClassName]
+:endfunction
+
+:function! GetContextNamespacePath(Context)
+	return a:Context[g:Context_NamespacePath]
 :endfunction
 
 :function! GetContextType(Context)
@@ -867,7 +923,9 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	endif
 	let l:header_line .= a:Msg
 	:call add(l:lines, l:header_line)
+
 	"Context lines
+	"Line
 	:call add(l:lines, "Line: ".GetContextLine(a:Context))
 	let ContextType = GetContextType(a:Context)
 	:call add(l:lines, "ContextType: ".ContextType)
@@ -882,6 +940,18 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	else
 		:call add(l:lines, "(Wrong context value)")
 	endif
+
+	"Class name and namespace
+	:call add(l:lines, "ClassName: ".string(GetContextClassName(a:Context)))
+	:call add(l:lines, "NamespacePath: ".string(GetContextNamespacePath(a:Context)))
+
+	if(ContextType == g:ContextType_Class)
+		:call add(l:lines, "IsStruct: ".string(GetContextIsStruct(a:Context)))
+		:call add(l:lines, "PublicLineIndex: ".string(GetContextClass_PublicLine(a:Context)))
+		:call add(l:lines, "PrivateLineIndex: ".string(GetContextClass_PrivateLine(a:Context)))
+		:call add(l:lines, "ProtectedLineIndex: ".string(GetContextClass_ProtectedLine(a:Context)))
+	endif
+
 	:call add(l:lines, "IndentationParam: ".GetContextIndentationParam(a:Context))
 	return l:lines
 :endfunction
