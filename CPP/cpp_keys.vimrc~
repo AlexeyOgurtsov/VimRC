@@ -12,6 +12,10 @@
 :map <A-F5> :Va ;Op1;Op2; int Var 0
 :map <F5> :Va ;Op1;Op2; int Var 0
 
+"Function
+:map <A-F6> :F ; N
+;map <F6> :F ; N
+
 "Struct/Class
 "Old command
 ":map <F2> :Stru F Op1;Op2;

@@ -154,6 +154,260 @@
 	let a:OpenState["IsInitiallyOpened"] = l:IsInitiallyOpened
 :endfunction
 
+"Elements of the list at the given range are to be converted into a string
+"with the given separator using .= operator
+"WARNING!!! If indices are beyond range, empty result is returned
+"EndIndex - NON-inclusive (if -1, then to end)
+:function! JoinListRange(Args, Sep, StartIndex, EndIndex)
+	let i = a:StartIndex	
+	let res = ''
+	while( ( i < a:EndIndex ) && (i < len(a:Args) ) )
+		if(len(res) > 0)
+			let res .= a:Sep
+		endif
+
+		let res .= a:Args[i]
+
+		let i += 1	
+	endwhile
+	return res
+:endfunction
+
+"Accumulate all elements from the given start index using .= operator
+"WARNING! If index is beyond range, empty result is used
+:function! JoinRestList(L, Sep, StartIndex)
+	return JoinListRange(a:L, a:Sep, a:StartIndex, len(a:L))
+:endfunction
+
+"Like JoinRestList, but uses ' ' separator by default
+:function! ListRangeAsString(L, Sep, StartIndex, EndIndex)
+	return JoinRestList(a:L, ' ', a:StartIndex, a:EndIndex)	
+:endfunction
+"Like JoinRestList, but uses ' ' separator by default
+:function! ListRestAsString(L, StartIndex)
+	return JoinRestList(a:L, ' ', a:StartIndex)
+:endfunction
+
+"Extracts arguments from the given string 
+"Each argument is prefixed with the given SepString
+"Default argument - when none of the provided SepStrings are encounted yet in
+"the string)
+"If the SepString is encountered the second time, it's to be treated like
+"the given argument is closed and we are providing the default argument now
+"Returns: Dictionary mapping SepString to argument value LIST
+"Examples:
+"	Separators:
+"		! - Category
+"		; - Option
+"		: - return value
+"
+"	!Input|Category;ops:bool:int* p    
+"		":" -> [ "bool" ]
+"		"!" -> [ "Input|Category" ]
+"		"" -> [ "int* p" ]
+"		";" -> [ "ops" ]
+"
+"	!Input|Category;ops:bool:int* p:int:test
+"		":" -> [ "bool", "int" ]
+"		"!" -> [ "Input|Category" ]
+"		"" -> [ "int* p" ]
+"		";" -> [ "ops", "test" ]
+
+:function! ExtractArgumentsFromString(S, SepList)
+	let ResDict = {}
+
+	" Create one list for each key (separator) of the result dictionary)
+	let ResDict[''] = []
+	let SepIndex = 0
+	while SepIndex < len(a:SepList)
+		let ResDict[a:SepList[SepIndex]] = []
+		let SepIndex += 1
+	endwhile
+
+	"Index of current separator
+	"(if negative, the default argument is current)
+	let CurrSepIndex = -1
+	let sep_value_start_index = 0
+	let sep_value_end_index = 0 "Past the end value of the separator
+	let SepFound = 0
+	let FoundSepIndex = -1 "Index of separator we found
+	let i = 0
+	while 1
+		" Append the extracted argument value corresponding the given
+		" separator
+		if(SepFound || (i >= len(a:S)))
+			if(i >= len(a:S) && BoolNot(SepFound))
+				let sep_value_end_index = len(a:S)
+			endif	
+
+			if(CurrSepIndex >= 0)
+				let SepStr = a:SepList[CurrSepIndex]
+			else
+				let SepStr = ""
+			endif
+			let len_argument = sep_value_end_index - sep_value_start_index
+			"We should never add empty string for default argument
+			"at the start of the line!
+			if(BoolNot((CurrSepIndex < 0) && (i == 1) && (len_argument == 0)))
+				:call add(ResDict[SepStr], strpart(a:S, sep_value_start_index, len_argument))
+			endif
+
+			let sep_value_start_index = i "Note: here we already skipped the separator
+			let sep_value_end_index = sep_value_start_index "Does Not makes sense to assign it - it's to be updated at the end of each iteration
+
+			if(CurrSepIndex == FoundSepIndex)
+				"Last separator is the same as we
+				"found, so we close the current
+				"argument and use the default
+				let CurrSepIndex = -1
+			else
+				let CurrSepIndex = FoundSepIndex
+			endif
+		endif
+
+
+		"Exit we gained the end of string
+		if(i >= len(a:S))
+			break
+		endif
+
+		"Find the separator
+		let SepFound = 0
+		let SepIndex = 0
+		let FoundSepIndex = -1
+		while (SepIndex < len(a:SepList)) && BoolNot(SepFound)
+			if(stridx(a:S, a:SepList[SepIndex], i) == i)
+				"We found the separator
+				let SepFound = 1
+				let FoundSepIndex = SepIndex
+			endif
+
+			let SepIndex += 1
+		endwhile
+			
+		if(SepFound)
+			let sep_value_end_index = i
+			let i += len(a:SepList[FoundSepIndex])
+		else
+			let i += 1
+		endif
+	endwhile
+
+	return ResDict
+:endfunction
+
+:function! EchoDictOfList(DictOfList)
+	for key in keys(a:DictOfList)
+		echo 'key='.key.' value='.join(a:DictOfList[key], ';')
+	endfor
+:endfunction
+
+
+"Extracts default arguments + custom arguments from string
+:function! ExtractDefaultArguments(S, ExtraSeps)
+	let Seps = [ '!', ':', ';', '//']
+	:call extend(Seps, a:ExtraSeps)
+
+	return ExtractArgumentsFromString(a:S, Seps)
+:endfunction
+
+"Joins all elements corresponding the given key into one str
+:function! GetJoinedArgument_FromDict(Dict, Key, JoinStr)
+	let Str = ''
+
+	let Elems = GetKey_ListType(a:Dict, a:Key)
+
+	let i = 0
+	while (i < len(Elems))
+		if(len(Str) > 0)
+			let Str .= a:JoinStr
+		endif
+		let Str .= GetSpacesTrimmed(Elems[i])
+		let i += 1
+	endwhile
+	return Str
+:endfunction
+
+:function! StringOrDefaultIfEmpty(S, Def)
+	if(S == '')
+		return a:Def
+	else 
+		return a:S
+	endif
+:endfunction
+
+:function! GetJoinedCategories_FromExtractedDict(Dict)
+	return GetSpacesTrimmed(GetJoinedArgument_FromDict(a:Dict, '!', '|'))
+:endfunction
+
+:function! GetJoinedOps_FromExtractedDict(Dict)
+	return GetSpacesTrimmed(GetJoinedArgument_FromDict(a:Dict, ';', ';'))
+:endfunction
+
+:function! GetFunctionArguments_FromExtractedDict(Dict)
+	return GetSpacesTrimmed(GetJoinedArgument_FromDict(a:Dict, '', ''))
+:endfunction
+
+:function! GetComment_FromExtractedDict(Dict)
+	return GetSpacesTrimmed(GetJoinedArgument_FromDict(a:Dict, '//', ' '))
+:endfunction
+
+:function! GetReturnType_FromExtractedDict(Dict)
+	return GetSpacesTrimmed(GetJoinedArgument_FromDict(a:Dict, ':', ' '))
+:endfunction
+
+:function! InvalidFunctionArgs(Dict)
+	let ReturnType = GetKey_ListType(a:Dict, ':')
+
+	if(len(ReturnType) > 1)
+		echoerr "Only one return type can be specified for function"
+		return 1
+	endif
+
+	return 0
+:endfunction
+
+"Removes all spaces chars from start of the string
+:function! GetLeftSpacesTrimmed(S)
+	let i = 0
+	let spaces_len = 0
+	while(i < len(a:S))
+		if(strpart(a:S, i, 1) =~# '\s')
+			let spaces_len += 1
+		else
+			break
+		endif
+		let i+=1
+	endwhile
+	"echo "DEBUG: spaces_len: ".spaces_len
+	return strpart(a:S, spaces_len)
+:endfunction
+
+"Removes all spaces chars from end of the string
+:function! GetRightSpacesTrimmed(S)
+	if(a:S == '') 
+		return a:S
+	endif
+	let i = len(a:S) - 1
+	let spaces_len = 0
+	while(i >= 0)
+		if(strpart(a:S, i, 1) =~# '\s')
+			let spaces_len += 1
+		else
+			break
+		endif
+		let i-=1
+	endwhile
+	"echo "DEBUG: spaces_len: ".spaces_len
+	return strpart(a:S, 0, (len(a:S) - spaces_len))
+:endfunction
+
+"Removes all spaces chars from end and start of the string
+:function! GetSpacesTrimmed(S)
+	let res = GetRightSpacesTrimmed(GetLeftSpacesTrimmed(a:S))
+	return res
+:endfunction
+
 :function! GetOrDefault(L, Index, DefaultValue)
 	if(a:Index < len(a:L))
 		return a:L[a:Index]
@@ -527,7 +781,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let l:res[g:Context_MaxEnumFlag_LineIndex] = -1
 	let l:res[g:Context_MaxEnumFlagValue] = -1
 	let l:res[g:Context_EnumFlagHole_LineIndex] = -1
-	let l:res[g:Context_EnumFlagHoleValue] = ""
+	let l:res[g:Context_EnumFlagHoleValue] = -1
 	"TODO
 	return l:res
 :endfunction

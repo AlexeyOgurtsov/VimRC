@@ -1588,6 +1588,14 @@ let g:MaxCount_BaseCmdArgs = 2
 	return 1
 :endfunction
 
+"Context of ordinary function (NOT lambda)
+:function! IsFunctionContextType(ContextType)
+	if((a:ContextType == g:ContextType_Enum) || (a:ContextType == g:ContextType_Function))
+		return 0
+	endif
+	return 1
+:endfunction
+
 "Arguments: see the corresponding command for arguments
 :function! CmdFunc_AddCode_CppClass(...)
 	let l:Context = {}
@@ -1689,6 +1697,73 @@ let g:MaxCount_BaseCmdArgs = 2
 	return 1
 :endfunction
 
+:function! AddCode_CppFunction(Context, BaseArgs, Name, Category, RetType, FunctionArgs, Comment, Ops)
+	"TODO
+:endfunction
+
+:function! CmdFunc_AddCode_CppFunction(...)
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+	let l:ContextType = GetContextType(l:Context)
+
+	":call EchoContext(0, "Debug context: CmdFunc_AddCode_CppFunction", l:Context, "")
+
+	"Checking custom args
+	let l:Name_ArgIndex = 0
+	let l:RetValAndArgs_ArgIndex = 1
+	if NoArg(1, l:MyArgs, "Name", l:Name_ArgIndex)
+		return 0
+	endif
+	let l:Name = l:MyArgs[l:Name_ArgIndex]
+	let l:RetValAndArgs = ListRestAsString(l:MyArgs, l:RetValAndArgs_ArgIndex)
+	let l:RetValAndArgs_Dict = ExtractDefaultArguments(l:RetValAndArgs, [])
+
+	"Check for return value and arguments validity
+	if (InvalidFunctionArgs(l:RetValAndArgs_Dict))
+		return 0
+	endif
+
+	let l:RetType = GetReturnType_FromExtractedDict(l:RetValAndArgs_Dict)
+	let l:FunctionArgs = GetFunctionArguments_FromExtractedDict(l:RetValAndArgs_Dict)
+	let l:Comment = GetComment_FromExtractedDict(l:RetValAndArgs_Dict)
+	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RetValAndArgs_Dict)
+	let l:Category = GetJoinedCategories_FromExtractedDict(l:RetValAndArgs_Dict)
+
+	"Update the global ops with extra ops:
+	let l:Ops .= ';'.l:ExtraOps.';'
+
+	"DEBUG {
+		let l:ShowDebugLines = 0
+
+		if l:ShowDebugLines
+			let l:DebugLines = []
+			:call add(l:DebugLines, "DEBUG CmdFunc_AddCode_CppFunction: ")
+			:call add(l:DebugLines, "RetValAndArgs=".l:RetValAndArgs)
+			:call add(l:DebugLines, "RetType=".l:RetType)
+			:call add(l:DebugLines, "FunctionArgs=".l:FunctionArgs)
+			:call add(l:DebugLines, "Comment=".l:Comment)
+			:call EchoBlock(0, l:DebugLines, "")
+
+			:call EchoDictOfList(l:RetValAndArgs_Dict)
+		endif
+
+	"DEBUG }
+
+	if( IsFunctionContextType(ContextType) )
+		:call AddCode_CppFunction(l:Context, l:BaseArgs, l:Name, l:Category, l:RetType, l:FunctionArgs, l:Comment, l:Ops)
+	else
+		"Unsupported context type here
+		:call EchoContext(1, "Unsupported context for command", l:Context, "")
+		return 0
+	endif
+:endfunction
+
 "Include:
 "Args: Name (with or without .h) [IsSystem (0/1)]
 :command! -nargs=* Inc :call CmdFunc_Inc(<f-args>)
@@ -1714,6 +1789,16 @@ let g:MaxCount_BaseCmdArgs = 2
 "(inside function, or inside class)
 "Args: OptionString Type Name [InitExpr]
 :command! -nargs=* Va :call CmdFunc_AddCode_CppVarOrField(0, [], <f-args>)
+
+"Args: Ops Name [ArgsAndRetVal]
+"ArgsAndRetval has the following format:
+"Elements after the : (colon) char and before : (colon) or end of string is return value
+"If return value is not specified, void is used
+"Examples:
+"	:F ; Sum int* A int* B :int		   - returns int + takes A,B
+"	:F ; Sum :int:int* A int* B                - returns int + takes A,B
+"	:F ; Msg int* A                            - returns void + takes A*
+:command! -nargs=* F :call CmdFunc_AddCode_CppFunction({}, <f-args>)
 
 
 "Helper function: Add Cpp class both definition and declaration

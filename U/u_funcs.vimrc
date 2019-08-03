@@ -38,6 +38,9 @@
 :function! GetUPropertyLine(Specs, MetaLine, Category)
 	return GetULine("UPROPERTY", a:Specs, a:MetaLine, a:Category)
 :endfunction
+:function! GetUFunctionLine(Specs, MetaLine, Category)
+	return GetULine("UFUNCTION", a:Specs, a:MetaLine, a:Category)
+:endfunction
 
 
 " Fixed name of UClass/UStruct/UEnum
@@ -402,6 +405,68 @@
 	return 1
 :endfunction
 
+:function! GetUFunction_LinesAbove(Context, Category, Name, RetVal, FuncArgs, Ops)
+	let lines = []
+	"TODO
+	let l:Specs = ""
+	let l:MetaLine = ""
+	:call add(lines, GetUFunctionLine(l:Specs, l:MetaLine, a:Category))
+	return lines
+:endfunction
+
+:function! CmdFunc_AddCode_UFunction(...)
+	let l:EntityType = g:ContextType_Function
+
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+	let l:ContextType = GetContextType(l:Context)
+
+	"TODO: Does it depend on somethif (name index)
+	let l:NameArgIndex = 0
+	let l:RetValAndArgs_ArgIndex = 1
+
+	"Checking custom args
+	if NoArg(1, l:MyArgs, "Name", l:NameArgIndex)
+		return 0
+	endif
+
+	let l:RetValAndArgs = ListRestAsString(l:MyArgs, l:RetValAndArgs_ArgIndex)
+	let l:RetValAndArgs_Dict = ExtractDefaultArguments(l:RetValAndArgs, [])
+
+	"Check for return value and arguments validity
+	if (InvalidFunctionArgs(l:RetValAndArgs_Dict))
+		return 0
+	endif
+
+	let l:RetType = GetReturnType_FromExtractedDict(l:RetValAndArgs_Dict)
+	let l:FunctionArgs = GetFunctionArguments_FromExtractedDict(l:RetValAndArgs_Dict)
+	let l:Comment = GetComment_FromExtractedDict(l:RetValAndArgs_Dict)
+	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RetValAndArgs_Dict)
+
+	"Update the global ops with extra ops:
+	let l:Ops .= ';'.l:ExtraOps.';'
+
+	"Getting custom args
+	let l:Name = l:MyArgs[l:NameArgIndex]
+	let l:Category = StringOrDefaultIfEmpty(GetJoinedCategories_FromExtractedDict(l:RetValAndArgs_Dict), "Misc")
+
+	:let l:ClassLinesAbove = GetUFunction_LinesAbove(l:Context, l:Category, l:Name, l:RetType, l:FunctionArgs, l:Ops)
+
+	"Calling the Cpp-level command
+	:let l:NewArgs = deepcopy(a:000)
+
+	"TODO
+	":let l:NewArgs[g:NumCommonArgs + l:NameArgIndex] = FixedName
+	:let l:NewArgs[g:BaseArgsIndex]["ClassLinesAbove"] = l:ClassLinesAbove
+	:call call(function("CmdFunc_AddCode_CppFunction"), l:NewArgs)
+:endfunction
+
 "arguments for enum class
 "	Options Name [category (default to misc)]
 "arguments for enum literal
@@ -417,3 +482,16 @@
 "Arguments:
 "OptionString Category Type Name [InitExpr]
 :command! -nargs=* UPr :call CmdFunc_AddCode_UVarOrProp(0, <f-args>)
+
+"Add Unreal function (with UFUNCTION)
+"Format:
+"	Ops Name [RetValAndArgsAndCategory]
+"Examples
+"	Categorized as Input|Mouse has argument 
+"	of bool bResetCursorPosition = false
+"	returns bool
+"		:UF ; LockMouse !Input|Mouse! bool bResetCursorPosition = false:bool
+"		:UF ; LockMouse :bool !Input|Mouse! bool bResetCursorPosition = false
+"		:UF ; LockMouse :bool: bool bResetCursorPosition = false !Input|Mouse
+"
+:command! -nargs=* UF :call CmdFunc_AddCode_UFunction({}, <f-args>)
