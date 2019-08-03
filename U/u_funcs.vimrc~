@@ -176,10 +176,72 @@
 :endfunction
 
 :function! GetUPropertyLine_ForVar(Context, OptionString, TypeStr, Name, Category)
+
+	let l:Specs = ""
+
+	let l:IsHidden = (a:OptionString =~? ";H;") || (a:OptionString =~? ";Hide;")
+
+	let l:EditDefaultsOnly = (a:OptionString !~? ";NoEd;") && (a:OptionString =~? ";EdDef;") && BoolNot(l:IsHidden)
+	let l:EditInstanceOnly = (a:OptionString !~? ";NoEd;") && (a:OptionString =~? ";EdInst;") && BoolNot(l:IsHidden)
+	let l:EditAnywhere = (a:OptionString !~? ";NoEd;") && BoolNot(l:EditDefaultsOnly) && BoolNot(l:EditInstanceOnly) && BoolNot(l:IsHidden)
+	let l:IsEditable = (l:EditAnywhere || l:EditDefaultsOnly || l:EditInstanceOnly)
+
+	let l:IsDebug = 1
+	if l:IsDebug
+		echo "l:EditDefaultsOnly: ".l:EditDefaultsOnly
+		echo "l:EditInstanceOnly: ".l:EditInstanceOnly
+		echo "l:EditAnywhere: ".l:EditAnywhere
+	endif
+
+	let l:VisibleAnywhere = BoolNot(l:IsEditable) && BoolNot(l:IsHidden)
+
+	let l:EditOrVisibilityStr = ""
+	if(l:EditAnywhere)
+		let l:EditOrVisibilityStr = "EditAnywhere"
+	elseif(l:EditDefaultsOnly)
+		let l:EditOrVisibilityStr = "EditDefaultsOnly"
+	elseif(l:EditInstanceOnly)
+		let l:EditOrVisibilityStr = "EditInstanceOnly"
+	elseif(l:VisibleAnywhere)
+		let l:EditOrVisibilityStr = "VisibleAnywhere"
+	endif
+
+	"Visibility or editability string always the first for consistency
+	if(l:EditOrVisibilityStr != '')
+		let l:Specs .= l:EditOrVisibilityStr
+	endif
+
+	let l:UseBP = (a:OptionString !~? ";NoBp;")
+	if l:UseBP
+		let l:BPStr = ''
+
+		let l:BPRead = (a:OptionString =~? ';BPR;') || (a:OptionString =~? ';BpRead;') || (a:OptionString =~? 'BpReadOnly;')
+
+		if(l:BPRead)
+			let l:BPStr = 'BlueprintReadOnly'
+		else
+			let l:BPStr = 'BlueprintReadWrite'
+		endif
+
+		if(l:BPStr != '')
+			if(l:Specs != '')
+				let l:Specs .= ', '
+			endif
+			let l:Specs .= l:BPStr
+		endif
+	endif
+
 	"TODO: Check correct meta line based on access (private, public etc.)
-	let l:Specs = "EditAnywhere, BlueprintReadWrite"
 	let l:MetaLine = "AllowPrivateAccess=true"
-	return GetUPropertyLine(Specs, MetaLine, a:Category)
+
+	if(l:UseBP)
+	endif
+
+	let l:CategoryToPass = a:Category
+	if (IsHidden)
+		let l:CategoryToPass = ""
+	endif
+	return GetUPropertyLine(Specs, MetaLine, l:CategoryToPass)
 :endfunction
 
 :function! CmdFunc_AddCode_UVarOrProp(...)
