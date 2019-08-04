@@ -186,7 +186,7 @@
 	let l:EditAnywhere = (a:OptionString !~? ";NoEd;") && BoolNot(l:EditDefaultsOnly) && BoolNot(l:EditInstanceOnly) && BoolNot(l:IsHidden)
 	let l:IsEditable = (l:EditAnywhere || l:EditDefaultsOnly || l:EditInstanceOnly)
 
-	let l:IsDebug = 1
+	let l:IsDebug = 0
 	if l:IsDebug
 		echo "l:EditDefaultsOnly: ".l:EditDefaultsOnly
 		echo "l:EditInstanceOnly: ".l:EditInstanceOnly
