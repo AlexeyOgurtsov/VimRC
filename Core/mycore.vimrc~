@@ -224,6 +224,10 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 	let a:FuncGenList[g:FuncGenArgIndex_RetType] = a:NewValue
 :endfunction
 
+:function! GetFuncOps(FuncGenList)
+	return a:FuncGenList[g:FuncGenArgIndex_Ops]
+:endfunction
+
 :function! AddFuncOps(FuncGenList, NewOps)
 	let a:FuncGenList[g:FuncGenArgIndex_Ops] .= ';' . a:NewOps
 :endfunction

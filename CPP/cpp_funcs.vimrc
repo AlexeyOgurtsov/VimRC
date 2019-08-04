@@ -854,15 +854,21 @@
 "*** Function definition
 "*** Function's both declaration and definition
 "*** WARNING! Lines are NOT idented
-:function! GetLines_CppFunc(OutDefinition, Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
+:function! GetLines_CppFunc(OutDefinition, FuncGenArgs, ClassName, TemplParams)
+	let l:FuncArgs = GetFuncArgString(a:FuncGenArgs)
+	let l:Name = GetFuncName(a:FuncGenArgs)
+	let l:RetType = GetFuncRetType(a:FuncGenArgs)
+	let l:Ops = GetFuncOps(a:FuncGenArgs)
+
 	let l:decl_lines = []
-	let l:header_line = GetLine_CppFuncDecl_General(a:Name, a:ContentString, a:ReturnType, a:OptionString)
-	let l:ReturnStmt = GetLines_DefaultReturnStmt(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
-	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, a:ContentString, a:ReturnType, a:OptionString)
-	let l:ShouldInline = (a:OptionString =~? ";Inline;") || (len(a:TemplParams) > 0)
+
+	let l:header_line = GetLine_CppFuncDecl_General(l:Name, l:FuncArgs, l:RetType, l:Ops)
+	let l:ReturnStmt = GetLines_DefaultReturnStmt(l:Name, a:ClassName, a:TemplParams, l:FuncArgs, l:RetType, l:Ops)
+	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, l:FuncArgs, l:RetType, l:Ops)
+	let l:ShouldInline = (l:Ops =~? ";Inline;") || (len(a:TemplParams) > 0)
 	:call DebugEcho("Debug: GetLines_CppFunc: ShouldInline: ".l:ShouldInline)
 	let l:ShouldNotInline = BoolNot(l:ShouldInline)
-	:let l:GenImpl = (a:OptionString !~? ";NoImpl;") && (a:OptionString !~? ";Def;")
+	:let l:GenImpl = (l:Ops !~? ";NoImpl;") && (l:Ops !~? ";Def;")
 	:lockvar l:GenImpl
 	"Debug
 	:call DebugEcho("Debug: GetLines_CppFunc: GenImpl: ".l:GenImpl)
@@ -873,7 +879,7 @@
 		:call add(l:decl_lines, l:header_line)
 		"Generate function definition in cpp file
 		:if l:GenImpl
-			let l:impl_header = GetLines_CppFuncImplHeader(a:Name, a:ClassName, a:TemplParams, a:ContentString, a:ReturnType, a:OptionString)
+			let l:impl_header = GetLines_CppFuncImplHeader(l:Name, a:ClassName, a:TemplParams, l:FuncArgs, l:RetType, l:Ops)
 			:call extend(a:OutDefinition, l:impl_header)
 			:call extend(a:OutDefinition, l:func_body)
 		:endif
@@ -882,10 +888,10 @@
 		"Debug
 		:call DebugEcho("Debug: GetLine_CppFunc: here we should provide body inside decl")
 		:if l:GenImpl
-			let l:ImplContent = GetFuncImplContentString(a:ContentString)
+			let l:ImplContent = GetFuncImplContentString(l:FuncArgs)
 			"function header line inside implementation 
 			"(inside .cpp file or inlined)
-			let l:header_line_impl = GetLine_CppFuncDecl_General(a:Name, l:ImplContent, a:ReturnType, a:OptionString)
+			let l:header_line_impl = GetLine_CppFuncDecl_General(l:Name, l:ImplContent, l:RetType, l:Ops)
 		:call DebugEcho("Debug: GetLine_CppFunc: header line impl: ".l:header_line_impl)
 			:call add(l:decl_lines, l:header_line_impl)
 			"Inlining body
@@ -1026,8 +1032,8 @@
 		let l:FunctionReturnType = "" "As we have destructor, function return type is empty
 		:lockvar l:FunctionReturnType
 		let l:FuncOptions = ""
-		let l:ContentString = ""
-		:lockvar l:ContentString
+		let l:FuncArgs = ""
+		:lockvar l:FuncArgs
 		:if l:IsVirtualDtor
 			let l:FuncOptions = l:FuncOptions . ";Virt;"
 		:endif
@@ -1043,7 +1049,10 @@
 		:if l:NoImpl
 			let l:FuncOptions = l:FuncOptions . ";NoImpl;"
 		:endif
-		let l:decl = GetLines_CppFunc(a:OutDefinition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
+		let l:CommentTextLines = ""
+		let l:Category = ""
+		let FuncGenArgs = MakeFuncGenArgs(l:FunctionName, l:FuncArgs, l:FunctionReturnType, l:FuncOptions, [], l:Category, l:CommentTextLines)
+		let l:decl = GetLines_CppFunc(a:OutDefinition, FuncGenArgs, a:ClassName, a:TemplParams)
 		"TODO: Why we extend public always? How about private part?
 		:call extend(l:PublicDeclaration, l:decl)
 	return l:PublicDeclaration
@@ -1080,8 +1089,8 @@
 		let l:FunctionReturnType = "" "As we have ctor, function return type is empty
 		:lockvar l:FunctionReturnType
 		let l:FuncOptions = ""
-		let l:ContentString = ""
-		:lockvar l:ContentString
+		let l:FunctionArgs = ""
+		:lockvar l:FunctionArgs
 		:if l:IsDef
 			let l:FuncOptions = l:FuncOptions . "Def;"
 		:endif
@@ -1094,7 +1103,10 @@
 		:if l:NoImpl
 			let l:FuncOptions = l:FuncOptions . "NoImpl;"
 		:endif
-		let l:decl = GetLines_CppFunc(a:OutDefinition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
+		let l:CommentTextLines = ""
+		let l:Category = ""
+		let FuncGenArgs = MakeFuncGenArgs(l:FunctionName, l:FunctionArgs, l:FunctionReturnType, l:FuncOptions, [], l:Category, l:CommentTextLines)
+		let l:decl = GetLines_CppFunc(a:OutDefinition, FuncGenArgs, a:ClassName, a:TemplParams)
 		"TODO: Why we extend public always? How about private part?
 		:call extend(l:PublicDeclaration, l:decl)
 	return l:PublicDeclaration
@@ -1161,8 +1173,8 @@
 		:lockvar l:FunctionName
 		:lockvar l:FunctionReturnType
 
-		let l:ContentString = GetFuncImplContentString_CopyMove(a:IsMove, a:ClassName, a:TemplParams, a:OptionString)
-		:lockvar l:ContentString
+		let l:ArgString = GetFuncImplContentString_CopyMove(a:IsMove, a:ClassName, a:TemplParams, a:OptionString)
+		:lockvar l:ArgString
 
 		"Forming up func options"
 		let l:FuncOptions = ""
@@ -1179,7 +1191,10 @@
 			let l:FuncOptions = l:FuncOptions . "NoImpl;"
 		:endif
 
-		let l:decl = GetLines_CppFunc(a:OutDefinition, l:FunctionName, a:ClassName, a:TemplParams, l:ContentString, l:FunctionReturnType, l:FuncOptions)
+		let l:Category = ""
+		let l:CommentTextLines = ""
+		let FuncGenArgs = MakeFuncGenArgs(l:FunctionName, l:ArgString, l:FunctionReturnType, l:FuncOptions, [], l:Category, l:CommentTextLines)
+		let l:decl = GetLines_CppFunc(a:OutDefinition, FuncGenArgs, a:ClassName, a:TemplParams)
 		"TODO: Why we extend public always? How about private part?
 		:call extend(l:PublicDeclaration, l:decl)
 	return l:PublicDeclaration
@@ -1866,27 +1881,63 @@ let g:MaxCount_BaseCmdArgs = 2
 
 "CppFunction + advanced options (like, for example, ClassLinesAbove etc.)
 "and parses context
-:function! GetLines_CppFunction_Advanced(OutDefinition, Context, BaseArgs, Name, Category, RetType, FunctionArgs, Comment, Ops)
+:function! GetLines_CppFunction_Advanced(OutDefinition, Context, BaseArgs, FuncGenArgs)
+	let l:IsDebug = 0
+
+	let l:Name = GetFuncName(a:FuncGenArgs)
+	let l:Comment = GetFuncCommentTextLines(a:FuncGenArgs)
+	let l:Ops = GetFuncOps(a:FuncGenArgs)
+
 	let l:ClassName = GetContextClassName(a:Context)
 	let l:TemplParams = {} "TODO: Pass templ params
+
+
+	"if (type(a:BaseArgs) != g:v_Dict)
+	"	echoerr "GetLines_CppFunction_Advanced: BaseArgs must be dict"
+	"endif
+
+	if(l:IsDebug)
+		echo "DEBUG: GetLines_CppFunction_Advanced"
+		:call EchoBlock(0, a:FuncGenArgs, "")
+		echo "type(Context): ".type(a:Context)
+		echo "type(BaseArgs): ".type(a:BaseArgs)
+		echo "type(FuncGenArgs): ".type(a:FuncGenArgs)
+		echo "Ops: ".l:Ops
+		echo "Name: ".l:Name
+		echo "Comment: ".l:Comment
+	endif
 
 	let l:public_lines = []
 	let l:priv_lines = []
 
-	:call extend(l:public_lines, GetLines_FunctionComment_IfShould(a:Name, a:Comment, a:Ops))
+	:call extend(l:public_lines, GetLines_FunctionComment_IfShould(l:Name, l:Comment, l:Ops))
 	:call extend(l:public_lines, GetKey_ListType(a:BaseArgs, "LinesAbove"))
-	:call extend(l:public_lines, GetLines_CppFunc(a:OutDefinition, a:Name, l:ClassName, l:TemplParams, a:FunctionArgs, a:RetType, a:Ops))
+	:call extend(l:public_lines, GetLines_CppFunc(a:OutDefinition, a:FuncGenArgs, l:ClassName, l:TemplParams))
 
 	return l:public_lines
 :endfunction
 
-:function! AddCode_CppFunction(Context, BaseArgs, Name, Category, RetType, FunctionArgs, Comment, Ops)
+:function! AddCode_CppFunction(Context, BaseArgs, FuncGenArgs)
+	let l:IsDebug = 0
+
+	let l:Ops = GetFuncOps(a:FuncGenArgs)
+
+
+	if(l:IsDebug)
+		echo "DEBUG: AddCode_CppFunction"
+		echo "type(Context): ".type(a:Context)
+		echo "type(BaseArgs): ".type(a:BaseArgs)
+		echo "type(FuncGenArgs): ".type(a:FuncGenArgs)
+		echo "Ops: ".l:Ops
+	endif
+
 	let l:public_lines = []
 	let l:priv_lines = []
 
-	:call extend(l:public_lines, GetLines_CppFunction_Advanced(l:priv_lines, a:Context, a:BaseArgs, a:Name, a:Category, a:RetType, a:FunctionArgs, a:Comment, a:Ops))
+	let l:main_lines = GetLines_CppFunction_Advanced(l:priv_lines, a:Context, a:BaseArgs, a:FuncGenArgs)
+	:call extend(l:public_lines, l:main_lines)
 
-	let l:NewOps = a:Ops.';PrepLineAfter;'
+	let l:NewOps = l:Ops.';PrepLineAfter;'
 	:call AddCodeAt(a:Context, l:public_lines, l:priv_lines, l:NewOps)
 :endfunction
 
@@ -2007,7 +2058,7 @@ let g:MaxCount_BaseCmdArgs = 2
 	let l:FuncGenArgs = CmdFunc_GetUpdatedCppFunctionArgs(l:Context, l:FuncGenArgs)
 
 	if( IsFunctionContextType(ContextType) )
-		:call AddCode_CppFunction(l:Context, l:BaseArgs, l:Name, l:Category, l:RetType, l:FunctionArgs, l:Comment, l:Ops)
+		:call AddCode_CppFunction(l:Context, l:BaseArgs, l:FuncGenArgs)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")
