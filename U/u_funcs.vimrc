@@ -532,6 +532,19 @@
 	return lines
 :endfunction
 
+:function! IsClassBPLib(ClassName)
+	return a:ClassName == "UBlueprintFunctionLibrary"
+:endfunction
+
+:function! IsBPLibContext(Context)
+	let l:ContextType = GetContextType(a:Context)
+	if (l:ContextType == g:ContextType_Class)
+		let l:BaseClassName = GetContextClass_BaseName(a:Context)
+		return IsClassBPLib(l:BaseClassName)
+	endif
+	return 0
+:endfunction
+
 :function! CmdFunc_AddCode_UFunction(...)
 	let l:EntityType = g:ContextType_Function
 
@@ -588,6 +601,12 @@
 	if (l:BpNative)	
 		"BlueprintNativeEvent NEVER virtual!
 		let l:Ops .= ";NoVirt;"
+	endif
+	
+	let l:IsBPLib = IsBPLibContext(l:Context)
+	if (l:IsBPLib)
+		"echo "DEBUG: Here"
+		let l:Ops .= ';Static;'
 	endif
 
 	"Calling the Cpp-level command

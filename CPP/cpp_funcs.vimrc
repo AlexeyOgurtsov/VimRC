@@ -20,6 +20,36 @@
 	return l:IsClass
 :endfunction
 
+"Returns base class from the C++ class header line
+"(returns "" if no base class specified)
+:function! GetCppBaseClassName_FromHeader(HeaderLine)
+	let lexems = split(a:HeaderLine)	
+	let i = 0
+	while i < len(lexems)	
+		if( lexems[i] == ':' )
+			let access_i = i + 1
+			while access_i < len(lexems)
+				if(lexems[access_i] == 'public' || lexems[access_i] == 'private' || lexems[access_i] == 'protected')
+					break
+				endif
+				let access_i += 1
+			endwhile
+			if(access_i) >= len(lexems)
+				break
+			endif
+			let class_base_name_index = access_i + 1
+			if(class_base_name_index) >= len(lexems)
+				break
+			endif
+			let class_base_name = lexems[class_base_name_index]
+			return class_base_name
+		endif
+
+		let i += 1
+	endwhile
+	return ""
+:endfunction
+
 
 "Return Cpp Class name from C++ class header
 "WARNING!!! The header must be valid!!!
@@ -88,9 +118,12 @@
 :function! ComputeCppClassContext(OutContext, HeaderLine, LinesInsideBody, Options)
 	let IsDebugEcho = 0
 
+	"TODO! Body of class may be splitted into a SET of lines!
+	
 	"TODO: We should compute cpp class name generally (ever if context is
 	"not  class)
 	let a:OutContext[g:Context_ClassName] = GetCppClassName_FromHeader(a:HeaderLine)
+	let a:OutContext[g:Context_ClassBaseName] = GetCppBaseClassName_FromHeader(a:HeaderLine)
 
 	let a:OutContext[g:Context_IsStruct] = GetIsStruct_FromHeader(a:HeaderLine)
 	let a:OutContext[g:Context_ClassPublicLineIndex] = FindPublic_LineIndex(a:LinesInsideBody)
@@ -641,7 +674,7 @@
 :function! GetLine_CppFuncDecl_General(Name, ContentString, ReturnType, OptionString)
 	let l:declaration_string = ""
 	"static if necessary"
-	:if (a:OptionString =~? ";S;") || (a:OptionString =~? ";Stat;")
+	:if (a:OptionString =~? ";S;") || (a:OptionString =~? ";Stat;") || (a:OptionString =~? ";Static;")
 		let l:declaration_string = l:declaration_string . "static "	
 	:endif
 	"Virtual if necessary"

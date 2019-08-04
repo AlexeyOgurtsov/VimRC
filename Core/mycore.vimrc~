@@ -729,6 +729,25 @@ let g:ContextType_Function = 3 "Inside function
 let g:ContextType_Global = 4 "Inside global or namespace 
 let g:ContextType_NUM = 5
 
+"Access types"
+let g:AccessType_Unknown = 0
+let g:AccessType_Public = 1
+let g:AccessType_Protected = 2
+let g:AccessType_Private = 3
+
+:function! GetAccessTypeString(AccessType)
+	if(a:AccessType == g:AccessType_Unknown)
+		return "Unknown"
+	elseif(a:AccessType == g:AccessType_Public)
+		return "Public"
+	elseif(a:AccessType == g:AccessType_Protected)
+		return "Protected"
+	elseif(a:AccessType == g:AccessType_Private)
+		return "Private"
+	else
+		return "{WRONG}"
+	endif
+:endfunction
 
 " Returns Core context with the given line index
 " Members:
@@ -754,12 +773,19 @@ let g:Context_EndLine = "ContextEndLine"
 let g:Context_LinesInsideBody = "ContextLinesInsideBody"
 "Is current class a struct (0 - for other contexts)"
 let g:Context_IsStruct = "ContextIsStruct"
+"Access type: what is current access type at the given context line?
+"Valid classes (including structs)
+"When struct: global is public
+"When class: global is private
+let g:Context_ClassAccessType = "ContextAccessType"
 "First public line of class
 "-1 if context is not class context or line does not exist
 "(for struct - index of first line after AFTER_LINE)
 let g:Context_ClassPublicLineIndex = "ContextClassPublicLineIndex"
 let g:Context_ClassPrivateLineIndex = "ContextClassPrivateLineIndex"
 let g:Context_ClassProtectedLineIndex = "ContextClassProtectedLineIndex"
+"Base name of the current context's class
+let g:Context_ClassBaseName = "ContextClassBaseName"
 "Class where are we inside now (no matter, whether we are inside class context
 "or inside other context"
 "(empty means we are NOT inside class)
@@ -785,7 +811,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let l:res = {}
 	"Line
 	let l:res[g:Context_Line] = a:LineIndex
-	let l:res[g:Context_Type] = g:ContextType_Unknown "TODO
+	let l:res[g:Context_Type] = g:ContextType_Unknown
 
 	let l:res[g:Context_StartLine] = 0
 	let l:res[g:Context_OpenBraceLine] = 0
@@ -794,11 +820,13 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 	"Class
 	let l:res[g:Context_IsStruct] = 0
+	let l:res[g:Context_ClassAccessType] = g:AccessType_Unknown
 	let l:res[g:Context_ClassPublicLineIndex] = -1
 	let l:res[g:Context_ClassPrivateLineIndex] = -1
 	let l:res[g:Context_ClassProtectedLineIndex] = -1
 
 	"Class/Namespace"
+	let l:res[g:Context_ClassBaseName] = ''
 	let l:res[g:Context_ClassName] = ''
 	let l:res[g:Context_NamespacePath] = ''
 
@@ -860,6 +888,14 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	return a:Context[g:Context_ClassProtectedLineIndex]
 :endfunction
 
+:function! GetContextClass_BaseName(Context)
+	return a:Context[g:Context_ClassBaseName]
+:endfunction
+
+:function! GetContextClass_AccessType(Context)
+	return a:Context[g:Context_ClassAccessType]
+:endfunction
+
 :function! GetContextClassName(Context)
 	return a:Context[g:Context_ClassName]
 :endfunction
@@ -904,6 +940,13 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	return a:Context[g:Context_EnumFlagHoleValue]
 :endfunction
 
+"Transform line index of the context from local (relative to first brace) into
+"global line index (relative to buffer's line)
+:function! LineIndex_LocToBuf(Context, InsideBody_LineIndex)
+	let l:FirstBodyLine_LineIndex_InBuffer = GetContextOpenBraceLine(a:Context) + 1
+	return l:FirstBodyLine_LineIndex_InBuffer + a:InsideBody_LineIndex
+:endfunction
+
 "Should we add +1 for indentation when adding into the given context?
 :function! ContextRequiresExtraIndentation(Context, Options)
 	let ContextType = GetContextType(a:Context)
@@ -943,10 +986,12 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 	"Class name and namespace
 	:call add(l:lines, "ClassName: ".string(GetContextClassName(a:Context)))
+	:call add(l:lines, "ClassBaseName: ".string(GetContextClass_BaseName(a:Context)))
 	:call add(l:lines, "NamespacePath: ".string(GetContextNamespacePath(a:Context)))
 
 	if(ContextType == g:ContextType_Class)
 		:call add(l:lines, "IsStruct: ".string(GetContextIsStruct(a:Context)))
+		:call add(l:lines, "ClassAccessType: ".GetAccessTypeString(GetContextClass_AccessType(a:Context)))
 		:call add(l:lines, "PublicLineIndex: ".string(GetContextClass_PublicLine(a:Context)))
 		:call add(l:lines, "PrivateLineIndex: ".string(GetContextClass_PrivateLine(a:Context)))
 		:call add(l:lines, "ProtectedLineIndex: ".string(GetContextClass_ProtectedLine(a:Context)))
@@ -1040,7 +1085,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 	"Cursor
 	if(a:Options !~# ";LockCur;")
-		:call JumpAfterAt(l:LineNumber, a:Lines)
+		:call JumpAfterAt(l:LineNumber, l:IndentedLines)
 	endif
 	return EndLineIndex
 :endfunction
