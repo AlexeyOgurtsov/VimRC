@@ -188,6 +188,77 @@
 	return JoinRestList(a:L, ' ', a:StartIndex)
 :endfunction
 
+let g:FuncGenArgIndex_Name = 0
+let g:FuncGenArgIndex_ArgString = 1
+let g:FuncGenArgIndex_RetType = 2
+let g:FuncGenArgIndex_Ops = 3
+let g:FuncGenArgIndex_BodyList = 4 "List of body line strings
+let g:FuncGenArgIndex_Category = 5 "Category
+let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
+
+:function! MakeFuncGenArgs(Name, ArgString, RetType, Ops, BodyList, Category, CommentTextLines)
+	return [a:Name, a:ArgString, a:RetType, a:Ops, deepcopy(a:BodyList), a:Category, a:CommentTextLines]
+:endfunction:
+
+:function! GetFuncName(FuncGenList)
+	return a:FuncGenList[g:FuncGenArgIndex_Name]
+:endfunction
+
+:function! SetFuncName(FuncGenList, NewValue)
+	let a:FuncGenList[g:FuncGenArgIndex_Name] = a:NewValue 
+:endfunction
+
+:function! GetFuncArgString(FuncGenList)
+	return a:FuncGenList[g:FuncGenArgIndex_ArgString]
+:endfunction
+
+:function! SetFuncArgString(FuncGenList, NewValue)
+	let a:FuncGenList[g:FuncGenArgIndex_ArgString] = a:NewValue
+:endfunction
+
+:function! GetFuncRetType(FuncGenList)
+	return a:FuncGenList[g:FuncGenArgIndex_RetType]
+:endfunction
+
+:function! SetFuncRetType(FuncGenList, NewValue)
+	let a:FuncGenList[g:FuncGenArgIndex_RetType] = a:NewValue
+:endfunction
+
+:function! AddFuncOps(FuncGenList, NewOps)
+	let a:FuncGenList[g:FuncGenArgIndex_Ops] .= ';' . a:NewOps
+:endfunction
+
+:function! GetFuncBody(FuncGenList)
+	return a:FuncGenList[g:FuncGenArgIndex_BodyList]
+:endfunction
+
+:function! SetFuncBody(FuncGenList, NewValue)
+	let a:FuncGenList[g:FuncGenArgIndex_BodyList] = deepcopy(a:NewValue)
+:endfunction
+
+:function! GetFuncCategory(FuncGenList)
+	return a:FuncGenList[g:FuncGenArgIndex_Category]
+:endfunction
+
+:function! SetFuncCategory(FuncGenList, NewValue)
+	let a:FuncGenList[g:FuncArgIndex_Category] = a:NewValue
+:endfunction
+
+:function! GetFuncCommentTextLines(FuncGenList)
+	return a:FuncGenList[g:FuncGenArgIndex_CommentTextLines]
+:endfunction
+
+:function! SetFuncCommentTextLines(FuncGenList, NewValue)
+	let a:FuncGenList[g:FuncArgIndex_CommentTextLines] = deepcopy(a:NewValue)
+:endfunction
+
+"Return list of form [MainString, ReturnValueString],
+"Where ReturnValueString is all string beyond the FUNC_RETURN_VALUE char
+"(FUNC_RETURN_VALUE char is NOT included in any of the strings!)
+:function! SplitFuncArgs_MainAndResult(S)
+	return split(a:S, '@')
+:endfunction
+
 "Extracts arguments from the given string 
 "Each argument is prefixed with the given SepString
 "Default argument - when none of the provided SepStrings are encounted yet in

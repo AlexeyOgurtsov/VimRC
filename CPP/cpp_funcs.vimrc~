@@ -116,7 +116,7 @@
 :endfunction
 
 :function! ComputeCppClassContext(OutContext, HeaderLine, LinesInsideBody, Options)
-	let IsDebugEcho = 1
+	let IsDebugEcho = 0
 
 	"TODO! Body of class may be splitted into a SET of lines!
 	
@@ -1922,6 +1922,11 @@ let g:MaxCount_BaseCmdArgs = 2
 	endif
 :endfunction
 
+" Returns updated function args based on context
+:function! CmdFunc_GetUpdatedCppFunctionArgs(Context, FuncArgs)
+	return a:FuncArgs
+:endfunction
+
 :function! CmdFunc_AddCode_CppFunction(...)
 	let l:Context = {}
 	let l:BaseArgs = {}
@@ -1957,6 +1962,7 @@ let g:MaxCount_BaseCmdArgs = 2
 
 	"Update the global ops with extra ops:
 	let l:Ops .= ';'.l:ExtraOps.';'
+
 
 	"Calculate class name based on context
 	if( l:ContextType == g:ContextType_Class )
@@ -1994,6 +2000,11 @@ let g:MaxCount_BaseCmdArgs = 2
 		endif
 
 	"DEBUG }
+
+	"All arguments of function generation
+	let l:FuncGenArgs = MakeFuncGenArgs(l:Name, l:FunctionArgs, l:RetType, l:Ops, [], l:Category, l:Comment)
+	"Function arguments
+	let l:FuncGenArgs = CmdFunc_GetUpdatedCppFunctionArgs(l:Context, l:FuncGenArgs)
 
 	if( IsFunctionContextType(ContextType) )
 		:call AddCode_CppFunction(l:Context, l:BaseArgs, l:Name, l:Category, l:RetType, l:FunctionArgs, l:Comment, l:Ops)
