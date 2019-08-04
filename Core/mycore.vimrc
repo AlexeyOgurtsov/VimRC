@@ -256,6 +256,14 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 	let a:FuncGenList[g:FuncArgIndex_CommentTextLines] = deepcopy(a:NewValue)
 :endfunction
 
+"Returns name with upper-cased first letter
+:function! GetFixedName(Name)
+	if(a:Name == '') 
+		return ''
+	endif
+	return toupper(strpart(a:Name, 0, 1)) . strpart(a:Name, 1)
+:endfunction
+
 "Return list of form [MainString, ReturnValueString],
 "Where ReturnValueString is all string beyond the FUNC_RETURN_VALUE char
 "(FUNC_RETURN_VALUE char is NOT included in any of the strings!)

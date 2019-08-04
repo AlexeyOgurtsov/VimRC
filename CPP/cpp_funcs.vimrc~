@@ -715,18 +715,26 @@
 	let l:formatted_decl_line = l:declaration_string.';'
 	:call append(a:LineNumber, l:formatted_decl_line)
 :endfunction
-"*** Calculates default return statemen lines for function
+"*** Calculates default return statemen lines for function (NOT indented)
+:function! GetLines_ReturnStmt(ValueStr)
+	let l:res_line = 'return'
+	if(len(a:ValueStr) > 0)
+		let l:res_line .= ' '
+	endif
+	let l:res_line .= string(a:ValueStr)
+	let l:res_line .= ';'
+	return [ l:res_line ]
+:endfunction
 :function! GetLines_DefaultReturnStmt(Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
 	let l:Lines = []
 
 	"Handling special cases for custom operators first
 	:if (a:Name==#"operator=")
-		return ["return *this;"]
+		return GetLines_ReturnStmt('*this')
 	:endif
 
 	:if (a:ReturnType != "void") && (a:ReturnType != "")
-		let l:ReturnStmt = "return ".a:ReturnType."{};"
-		:call add(l:Lines, l:ReturnStmt)
+		:call add(l:Lines, GetLines_ReturnStmt('{}'))
 	:endif
 	return l:Lines
 :endfunction
@@ -2016,9 +2024,81 @@ let g:MaxCount_BaseCmdArgs = 2
 	endif
 :endfunction
 
+"Searches for the context namespace for the given member name
+:function! GetFixedName_MemberInContext(Context, MemberName, Ops)
+	"TODO
+	return GetFixedName(a:MemberName)
+:endfunction
+
+:function! GetUpdatedCppFunctionArgs_Getter(Context, MemberName, FuncArgs)
+	let l:IsDebug = 0
+	if l:IsDebug
+		echo "GetUpdatedCppFunctionArgs_Getter"
+		echo "FuncArgString: ".GetFuncArgString(a:FuncArgs)
+		echo "ReturnType: ".GetFuncRetType(a:FuncArgs)
+	endif
+
+	let l:NewArgs = deepcopy(a:FuncArgs)
+
+	if(a:MemberName == '')
+		echoerr 'Getter member name must be non-empty'
+		return []
+	endif
+
+	let l:FixedMemberName = GetFixedName_MemberInContext(a:Context, a:MemberName, GetFuncOps(l:NewArgs))
+	let l:NewGetterName = 'Get'.l:FixedMemberName
+
+	:call SetFuncName(l:NewArgs, l:NewGetterName)
+	:call AddFuncOps(l:NewArgs, ';const;') "Getters are always constant
+	:call AddFuncOps(l:NewArgs, ';inline;') "Getters are inline by default
+
+	"Checking return type
+	let l:OldRetType = GetFuncRetType(l:NewArgs)
+	if(l:OldRetType == '' || l:OldRetType == 'void')
+		"TODO: Fix return type 
+		"(based on return type of the given var, if it exists)
+
+		echoerr "Getter must have return type"
+		return []
+	endif
+
+	
+	"Fixing body: WARN: Must be done AFTER fixing return type!
+	if(GetFuncBody(l:NewArgs) == [])
+		let NewBody = GetLines_ReturnStmt(l:FixedMemberName)
+		:call SetFuncBody(l:NewArgs, NewBody)	
+	endif
+
+	return l:NewArgs
+:endfunction
+
+
 " Returns updated function args based on context
 :function! CmdFunc_GetUpdatedCppFunctionArgs(Context, FuncArgs)
-	return a:FuncArgs
+	let l:ContextType = GetContextType(a:Context)
+
+	let l:NewArgs = deepcopy(a:FuncArgs)
+
+	"Update options based on context
+	let l:Name = GetFuncName(a:FuncArgs)
+	if(l:Name =~# '^\.\w*')
+		"Getter
+		let l:MemberName = strpart(l:Name, 1)
+		let l:NewArgs = GetUpdatedCppFunctionArgs_Getter(a:Context, l:MemberName, a:FuncArgs)
+		if(l:NewArgs == [])
+			return []
+		endif
+
+	elseif(l:Name =~# '^\.\.\w*')
+		"Setter
+		let l:MemberName = strpart(l:Name, 2)
+	endif
+
+	if( l:ContextType == g:ContextType_Class )
+		"TODO
+	endif
+
+	return l:NewArgs
 :endfunction
 
 :function! CmdFunc_AddCode_CppFunction(...)
@@ -2107,6 +2187,9 @@ let g:MaxCount_BaseCmdArgs = 2
 	let l:FuncGenArgs = MakeFuncGenArgs(l:Name, l:FunctionArgs, l:RetType, l:Ops, l:BodyLines, l:Category, l:Comment)
 	"Function arguments
 	let l:FuncGenArgs = CmdFunc_GetUpdatedCppFunctionArgs(l:Context, l:FuncGenArgs)
+	if (l:FuncGenArgs == [])
+		return 0
+	endif
 
 	if( IsFunctionContextType(ContextType) )
 		:call AddCode_CppFunction(l:Context, l:BaseArgs, l:FuncGenArgs)
@@ -2115,6 +2198,7 @@ let g:MaxCount_BaseCmdArgs = 2
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")
 		return 0
 	endif
+	return 1
 :endfunction
 
 "Include:
