@@ -733,10 +733,7 @@
 :function! GetLines_CppFuncDefaultBody(ReturnStmt, ContentString, ReturnType, OptionString)
 	let l:Lines = []
 	let l:ReturnStmtLines = deepcopy(a:ReturnStmt)
-	:call IdentBlock(l:ReturnStmtLines, 1)
-	:call add(l:Lines, "{")
 	:call extend(l:Lines, l:ReturnStmtLines)
-	:call add(l:Lines, "}")
 	return l:Lines
 :endfunction
 "*** Returns content string updated for implementing
@@ -851,10 +848,48 @@
 	:call add(l:Lines, l:FuncHeader)
 	return l:Lines
 :endfunction
+
+
+"Returns list of lines of body lines (default or custom)
+"{} NOT added!
+:function! GetLines_CppFunc_InnerBodyLines(FuncGenArgs, ClassName, TemplParams)
+	let l:IsDebug = 0
+
+	let l:FuncArgs = GetFuncArgString(a:FuncGenArgs)
+	let l:Name = GetFuncName(a:FuncGenArgs)
+	let l:RetType = GetFuncRetType(a:FuncGenArgs)
+	let l:Ops = GetFuncOps(a:FuncGenArgs)
+	let l:ProvidedBodyLines = GetFuncBody(a:FuncGenArgs)
+
+	if(l:Ops =~? ";NoDefBody;")
+		let l:func_body = []
+	elseif(l:ProvidedBodyLines == [])
+		"Using default body
+		let l:ReturnStmt = GetLines_DefaultReturnStmt(l:Name, a:ClassName, a:TemplParams, l:FuncArgs, l:RetType, l:Ops)
+		let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, l:FuncArgs, l:RetType, l:Ops)
+	else
+		"Body is provided, use it as-is
+		let l:func_body = deepcopy(l:ProvidedBodyLines)
+	endif
+
+	if(l:IsDebug)
+		echo "DEBUG: GetLines_CppFunc_InnerBody"
+		echo "len(l:func_body)=".len(l:func_body)
+		:call EchoBlock(0, l:func_body, "")
+	endif
+
+	return l:func_body
+:endfunction
+
 "*** Function definition
 "*** Function's both declaration and definition
 "*** WARNING! Lines are NOT idented
 :function! GetLines_CppFunc(OutDefinition, FuncGenArgs, ClassName, TemplParams)
+	let l:IsDebug = 0
+	if (l:IsDebug)
+		echo "DEBUG: GetLine_CppFunc"
+	endif
+
 	let l:FuncArgs = GetFuncArgString(a:FuncGenArgs)
 	let l:Name = GetFuncName(a:FuncGenArgs)
 	let l:RetType = GetFuncRetType(a:FuncGenArgs)
@@ -863,9 +898,17 @@
 	let l:decl_lines = []
 
 	let l:header_line = GetLine_CppFuncDecl_General(l:Name, l:FuncArgs, l:RetType, l:Ops)
-	let l:ReturnStmt = GetLines_DefaultReturnStmt(l:Name, a:ClassName, a:TemplParams, l:FuncArgs, l:RetType, l:Ops)
-	let l:func_body = GetLines_CppFuncDefaultBody(l:ReturnStmt, l:FuncArgs, l:RetType, l:Ops)
-	let l:ShouldInline = (l:Ops =~? ";Inline;") || (len(a:TemplParams) > 0)
+
+	"Body calculation {
+	let l:body_inner_lines = GetLines_CppFunc_InnerBodyLines(a:FuncGenArgs, a:ClassName, a:TemplParams)
+	:call IdentBlock(l:body_inner_lines, 1)
+	let l:func_body = []
+	:call add(l:func_body, '{')
+	:call extend(l:func_body, l:body_inner_lines)
+	:call add(l:func_body, '}')
+	" Body calculation }
+
+	let l:ShouldInline = (l:Ops =~? ";Inline;") || (l:Ops =~? ";In;") || (len(a:TemplParams) > 0)
 	:call DebugEcho("Debug: GetLines_CppFunc: ShouldInline: ".l:ShouldInline)
 	let l:ShouldNotInline = BoolNot(l:ShouldInline)
 	:let l:GenImpl = (l:Ops !~? ";NoImpl;") && (l:Ops !~? ";Def;")
@@ -1979,6 +2022,8 @@ let g:MaxCount_BaseCmdArgs = 2
 :endfunction
 
 :function! CmdFunc_AddCode_CppFunction(...)
+	let l:ShowDebugLines = 0
+
 	let l:Context = {}
 	let l:BaseArgs = {}
 	let l:OpsList = []
@@ -1998,8 +2043,12 @@ let g:MaxCount_BaseCmdArgs = 2
 		return 0
 	endif
 	let l:Name = l:MyArgs[l:Name_ArgIndex]
-	let l:RetValAndArgs = ListRestAsString(l:MyArgs, l:RetValAndArgs_ArgIndex)
+	let RestOfString = ListRestAsString(l:MyArgs, l:RetValAndArgs_ArgIndex)
+	let MainAndBody = SplitFuncArgs_MainAndResult(RestOfString)
+	let l:RetValAndArgs = GetOrDefault(MainAndBody, 0, "")
+	let l:BodyLines = GetFuncBodyLines_FromMainAndBodyList(MainAndBody)
 	let l:RetValAndArgs_Dict = ExtractDefaultArguments(l:RetValAndArgs, [])
+
 
 	"Check for return value and arguments validity
 	if (InvalidFunctionArgs(l:RetValAndArgs_Dict))
@@ -2036,7 +2085,6 @@ let g:MaxCount_BaseCmdArgs = 2
 	endif
 
 	"DEBUG {
-		let l:ShowDebugLines = 0
 
 		if l:ShowDebugLines
 			let l:DebugLines = []
@@ -2047,13 +2095,16 @@ let g:MaxCount_BaseCmdArgs = 2
 			:call add(l:DebugLines, "Comment=".l:Comment)
 			:call EchoBlock(0, l:DebugLines, "")
 
+			echo "BodyLines"
+			:call EchoBlock(0, l:BodyLines, "")
+
 			:call EchoDictOfList(l:RetValAndArgs_Dict)
 		endif
 
 	"DEBUG }
 
 	"All arguments of function generation
-	let l:FuncGenArgs = MakeFuncGenArgs(l:Name, l:FunctionArgs, l:RetType, l:Ops, [], l:Category, l:Comment)
+	let l:FuncGenArgs = MakeFuncGenArgs(l:Name, l:FunctionArgs, l:RetType, l:Ops, l:BodyLines, l:Category, l:Comment)
 	"Function arguments
 	let l:FuncGenArgs = CmdFunc_GetUpdatedCppFunctionArgs(l:Context, l:FuncGenArgs)
 

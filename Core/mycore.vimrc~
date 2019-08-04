@@ -260,7 +260,25 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 "Where ReturnValueString is all string beyond the FUNC_RETURN_VALUE char
 "(FUNC_RETURN_VALUE char is NOT included in any of the strings!)
 :function! SplitFuncArgs_MainAndResult(S)
-	return split(a:S, '@')
+	if(len(a:S) > 0)
+		if(a:S =~# '^@')
+			return ['', strpart(a:S, 1)]
+		else
+			return split(a:S, '@')
+		endif
+	else
+		return ['','']
+	endif
+:endfunction
+
+
+:function! GetFuncBodyLines_FromMainAndBodyList(MainAndBodyList)
+	let l:BodyString = GetOrDefault(a:MainAndBodyList, 1, "")
+	if(IsEmptyOrSpaced(l:BodyString))
+		return []
+	else
+		return [ l:BodyString ]
+	endif
 :endfunction
 
 "Extracts arguments from the given string 
