@@ -444,7 +444,7 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 :function! FindSectionStartLine_InRange(StartLine, LastLine, SectionName)
 	let LineIndex = a:StartLine
 	while(LineIndex <= a:LastLine)
-		if(IsSectionStartLine(getline(LineIndex), SectionName))
+		if(IsSectionStartLine(getline(LineIndex), a:SectionName))
 			return LineIndex
 		endif
 		let LineIndex += 1
@@ -452,6 +452,21 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 	return -1
 :endfunction
 
+"Find section end line
+"Returns: -1 if not found
+"Arguments:
+"	StartLine - index of line (in buffer space) where to start the search
+"	EndLine - index of last line to search
+:function! FindSectionEndLine_InRange(StartLine, LastLine, SectionName)
+	let LineIndex = a:StartLine
+	while(LineIndex <= a:LastLine)
+		if(IsSectionStartLine(getline(LineIndex), a:SectionName))
+			return LineIndex
+		endif
+		let LineIndex += 1
+	endwhile
+	return -1
+:endfunction
 "Returns name of value from options string
 "(returns empty string if value name is NOT specified)
 :function! GetValueByPrefixFromOptions(Options, Prefix)
@@ -1090,6 +1105,16 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	return a:Context[g:Context_EndLine]
 :endfunction
 
+:function! GetContextEntityName(Context)
+	let ContextType = GetContextType(a:Context)
+	if (ContextType == g:ContextType_Class)
+		return GetContextClassName(a:Context)
+	else
+		"TODO
+		return ''
+	endif
+:endfunction
+
 :function! GetContextLinesInsideBody(Context)
 	return a:Context[g:Context_LinesInsideBody]
 :endfunction
@@ -1278,10 +1303,19 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 "	(or insert line index, if empty block is inserted)
 :function! AddIndentedCodeLinesAt(Context, Lines, Options)
 	let IsDebug = 0
+	if (IsDebug)
+		echo 'DEBUG: AddIndentedCodeLinesAt'
+	endif 
 
 	let l:LineNumber = GetContextLine(a:Context)
+	lockvar l:LineNumber
 	let l:IndentedLines = deepcopy(a:Lines)
 	let IndentParam = GetContextIndentationParam(a:Context)
+
+	"Identation and formatting
+	if(a:Options =~# ";PrepLineBefore;")
+		:call insert(l:IndentedLines, "", 0)
+	endif
 
 	"Calculate EndLineIndex
 	if (len(l:IndentedLines) > 0)
@@ -1290,13 +1324,12 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 		let EndLineIndex = l:LineNumber
 	endif
 
-	"Identation and formatting
-	if(a:Options =~# ";PrepLineBefore;")
-		:call insert(l:IndentedLines, "", 0)
-	endif
+	"Warning! We must prepend line after AFTER we initialized EndLineIndex
+	"(because we need to return the last MEANINGFUL line index)
 	if(a:Options =~# ";PrepLineAfter;")
 		:call add(l:IndentedLines, "")
 	endif
+
 	if(a:Options !~# ";NoDefaultIndent;")
 		let IndentParam = GetContextIndentationParam(a:Context)
 		"By default we ident on the level of the context PLUS one
@@ -1309,6 +1342,20 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	endif
 
 	" Appending to buffer
+	let OldEnd = line('$')
+	let CountLinesBeyondEnd = (EndLineIndex - OldEnd)
+	if (IsDebug)
+		echo "CountLinesBeyondEnd: ".CountLinesBeyondEnd
+	endif
+	if(CountLinesBeyondEnd > 0)
+		let ExtraLineIndex = OldEnd
+		let i = 0
+		:while i < CountLinesBeyondEnd
+			:call append(ExtraLineIndex, [''])
+			let ExtraLineIndex += 1	
+			let i += 1
+		:endwhile
+	endif
 	:call append(l:LineNumber, l:IndentedLines)
 
 	"Cursor
@@ -1318,13 +1365,68 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 	if IsDebug
 		let debug_lines = []
+		:call add(debug_lines, 'DEBUG: AddIndentedCodeLines')
 		:call add(debug_lines, 'Options:'.a:Options)
 		:call add(debug_lines, 'LineNumber:'.LineNumber)
+		:call add(debug_lines, 'len(IndentedLines):'.len(l:IndentedLines))
 		:call add(debug_lines, 'IndentParam:'.IndentParam)
+		:call add(debug_lines, 'EndLineIndex:'.EndLineIndex)
 		:call EchoBlock(0, debug_lines, '')
 	endif
 
 	return EndLineIndex
+:endfunction
+
+:function! GetSectionName_RightHereForEntity(Context)
+	let EntityName = GetContextEntityName(a:Context)
+	return 'RightHere_'.EntityName
+:endfunction
+ 
+
+"Prepares the buffer code for inserting the private code RIGHT HERE
+"Returns: line where to  insert private lines
+:function! PrepareLines_ForRightHereCode_ReturnInsertLine(PublicContext, EndPublicLineIndex, PrivateLines, Options)
+		let IsDebug = 1
+
+		"Find section if it exists
+		let SectionName = GetSectionName_RightHereForEntity(a:PublicContext)
+		let StartLine = GetContextLine(a:PublicContext)
+		let FoundSectionIndex = FindSectionStartLine_InRange(StartLine, line('$'), SectionName)
+
+		if(IsDebug)
+			echo "DEBUG: PrepareLines_ForRightHereCode: FoundSectionIndex=".FoundSectionIndex
+		endif
+
+		"If section not found, create it
+		if(FoundSectionIndex < 0)
+			let l:Comment = 'Adhoc impl lines (WARNING! move to .cpp file, otherwise will fail to compile!)'
+			let l:Category = ''
+			let l:Ops = ''
+			let SectionInsertLineIndex = (GetContextEndLine(a:PublicContext)) + 1
+			:call AddSectionBracketLinesAt(GetContextAt(SectionInsertLineIndex, ''), SectionName, l:Comment, l:Category, l:Ops)
+
+			if (IsDebug)
+				echo 'DEBUG: PrepareLines_ForRightHereCode: SectionInsertLineIndex='.SectionInsertLineIndex
+			endif
+
+
+		endif
+		let InsertLine = FindSectionEndLine_InRange(StartLine, line('$'), SectionName) 
+
+		if (IsDebug)
+			echo 'DEBUG: PrepareLines_ForRightHereCode: InsertLine='.l:InsertLine
+		endif
+
+		return l:InsertLine
+:endfunction
+
+"Adds private implementation when right-here mode is used
+:function! AddPrivateCode_RightHere(PublicContext, EndPublicLineIndex, PrivateLines, Options)
+		"TODO: Find best insert line
+		let l:InsertLine = PrepareLines_ForRightHereCode_ReturnInsertLine(a:PublicContext, a:EndPublicLineIndex, a:PrivateLines, a:Options)
+
+		let l:Context = GetContextAt(l:InsertLine, a:Options)
+		:call AddIndentedCodeLinesAt(l:Context, a:PrivateLines, a:Options)
 :endfunction
 
 "**** Appends private part of the code 
@@ -1356,10 +1458,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	"Should we insert private lines right after the public code
 	let l:InsertPrivateHere = (a:Options =~ ";PrivHere;")
 	if(l:InsertPrivateHere)
-		let l:InsertLine = a:EndPublicLineIndex + 1
-
-		let l:Context = GetContextAt(l:InsertLine, a:Options)
-		:call AddIndentedCodeLinesAt(l:Context, a:PrivateLines, l:NewOptions)
+		:call AddPrivateCode_RightHere(a:PublicContext, a:EndPublicLineIndex, a:PrivateLines, l:NewOptions)
 	endif
 	
 :endfunction
@@ -1371,6 +1470,11 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let l:LineNumber = GetContextLine(l:Context)
 	:call AddIndentedCodeLinesAt(l:LineNumber, a:Lines, a:Options)
 :endfunction
+
+:function! GetUpdatedContext(Context, Options)
+	return GetContextAt(GetContextLine(a:Context), a:Options)
+:endfunction
+
 "Append both declaration and definition 
 " - based on the given public context (lines, buffer etc.) and options
 " - Automatically should perform identation (for example, when inside namespace
@@ -1384,11 +1488,14 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let l:AddPublic = (a:Options !~ ";NoPublic;")
 
 	"Adding public code
-	let l:BestContext = ContextOrCurr(a:Context, a:Options)
-	let l:EndPublicLineIndex = AddIndentedCodeLinesAt(l:BestContext, a:PublicLines, a:Options)
+	let l:BestPublicContext = ContextOrCurr(a:Context, a:Options)
+	let l:EndPublicLineIndex = AddIndentedCodeLinesAt(l:BestPublicContext, a:PublicLines, a:Options)
 
 	"Adding private code"
-	:call AddPrivateCode_IfShould(l:BestContext, l:EndPublicLineIndex, a:PrivateLines, a:Options)
+	"WARNING!!! We must recalculate context after public lines are added
+	"(as lines are shifted)!
+	let l:BestPublicContext = GetUpdatedContext(l:BestPublicContext, a:Options)
+	:call AddPrivateCode_IfShould(l:BestPublicContext, l:EndPublicLineIndex, a:PrivateLines, a:Options)
 	return l:PublicLineNumber
 :endfunction
 
@@ -1561,15 +1668,20 @@ let g:MaxCount_BaseCmdArgs = 2
 :function! AddSectionBracketLinesAt(Context, SectionName, Comment, Category, Options)
 	let lines = GetSectionBracketLines(a:SectionName, a:Comment, a:Category, a:Options)
 	let NewOps = a:Options.';PrepLineBefore;'
-	:call AddIndentedCodeLinesAt(a:Context, lines, NewOps)
+	let IsDebug = 1
+	if (IsDebug)
+		echo 'DEBUG: AddSectionBracketLinesAt'
+		echo 'GetContextLine: '.GetContextLine(a:Context)
+	endif
+	return AddIndentedCodeLinesAt(a:Context, lines, NewOps)
 :endfunction
 
 :function! AddSectionBracketLinesAtLine(LineNumber, SectionName, Comment, Category, Options)
-	:call AddSectionBracketLinesAt(GetContextAt(a:LineNumber, a:Options), a:SectionName, a:Comment, a:Category, a:Options)
+	 return AddSectionBracketLinesAt(GetContextAt(a:LineNumber, a:Options), a:SectionName, a:Comment, a:Category, a:Options)
 :endfunction
 
 :function! AddSectionBracketLines(SectionName, Comment, Category, Options)
-	:call AddSectionBracketLinesAt(GetCurrContext(a:Options), a:SectionName, a:Comment, a:Category, a:Options)
+	return AddSectionBracketLinesAt(GetCurrContext(a:Options), a:SectionName, a:Comment, a:Category, a:Options)
 :endfunction
 
 :function! CmdFunc_AddCode_Section(...)

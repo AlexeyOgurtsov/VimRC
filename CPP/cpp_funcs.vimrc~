@@ -610,7 +610,7 @@
 
 :function! GetLines_GetVarOrFieldComment_IfShould(IsField, TypeName, Name, InitExpr, OptionString)
 	let l:CommentTextLines = GetLines_GetVarOrFieldCommentText(a:IsField, a:TypeName, a:Name, a:InitExpr, a:OptionString)
-	let l:IsAsterisk = 0
+	let l:IsAsterisk = 1
 	let l:CommentLines = GetLines_CppComment_IfShould(l:IsAsterisk, l:CommentTextLines, a:OptionString)
 	return l:CommentLines
 :endfunction
@@ -709,9 +709,10 @@
 :function! GetCppClassMemberPrefix(ClassName, TemplParams)
 	let l:IsWithClass = (len(a:ClassName) > 0)
 	let l:Res = ""
+	let l:IsWithTemplKeyword = 0 "Should we add Template keyword?
 	if (l:IsWithClass)
 		let l:Res .= a:ClassName
-        	let l:Res .= GetTemplParamsString(a:TemplParams, l:IsWithClass)
+        	let l:Res .= GetTemplParamsString(a:TemplParams, l:IsWithTemplKeyword)
 	       	let l:Res .= "::"
 	endif
 	return l:Res
