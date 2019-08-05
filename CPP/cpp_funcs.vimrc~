@@ -249,7 +249,7 @@
 :endfunction
 
 :function! ComputeCppEnumContext(OutContext, HeaderLine, LinesInsideBody, Options)
-	let IsDebug = 1
+	let IsDebug = 0
 
 	let a:OutContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(a:LinesInsideBody)
 	if(IsDebug)
@@ -1693,7 +1693,11 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	"Add code
 	let l:NewOps = a:OptionString.";PrepLineAfter;"
-	let l:InsertionStartLine = AddCodeAt(GetContextAt(line('.'), a:OptionString), l:variable_lines, l:variable_cpp_lines, l:NewOps)
+	let Context = GetContextAt(line('.'), a:OptionString)
+	let l:InsertionStartLine = AddCodeAt(Context, l:variable_lines, l:variable_cpp_lines, l:NewOps)
+
+	"Hack: change cursor position
+	:call JumpAfterAt(GetContextLine(Context), l:variable_lines)
 :endfunction
 
 " Adds variable or field 
@@ -1786,7 +1790,12 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:FixedName = GetNameWithFixedPrefix(a:Name, "E")
 	let l:lines = GetLines_EnumClass( a:BaseArgs, a:Ops, a:Context, a:LinesAbove, a:LinesBelow, l:FixedName)
 	let l:NewOps = a:Ops.";PrepLineAfter;"
-	return AddCodeAt(a:Context, l:lines, [], l:NewOps)
+
+	let AddCodeResult = AddCodeAt(a:Context, l:lines, [], l:NewOps)
+	"Hack: change cursor position
+	":call cursor(LineIndex_LocToBuf(a:Context, 0), 1)
+
+	return AddCodeResult
 :endfunction
 
 :function! AddCode_EnumLiteral(BaseArgs, Ops, Context, LineAfter, Name, ValueStr)
@@ -1825,7 +1834,12 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		"echo "AddCode_EnumLiteral: Debug: IndentLevel: ".l:indent_level
 	" DEBUG }
 
-	return AddCodeAt(a:Context, l:lines, [], a:Ops)
+	let ResultCodeAt = AddCodeAt(a:Context, l:lines, [], a:Ops)
+
+	"Hack: change cursor position
+	:call JumpAfterAt(GetContextLine(a:Context), l:lines)
+
+	return ResultCodeAt
 :endfunction
 
 :function! IsEnumLiteralContextType(ContextType)

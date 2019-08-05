@@ -867,14 +867,14 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 "the cursor
 "Returns: New cursor position
 :function! JumpAfterAt(LineNumber, Lines)
-	let IsDebug = 1
-	:let newpos = a:LineNumber + len(a:Lines) 
+	let IsDebug = 0
+	:let newpos = a:LineNumber + len(a:Lines)
+	:call cursor(newpos, 1)
 	if (IsDebug)
 		echo 'LineNumber='.a:LineNumber
 		echo 'len(a:Lines)='.len(a:Lines)
 		echo 'newpos='newpos
 	endif
-	:call cursor(newpos, 1)
 	return newpos
 :endfunction
 
@@ -1361,12 +1361,21 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 			let i += 1
 		:endwhile
 	endif
-	:call append(l:LineNumber, l:IndentedLines)
 
 	"Cursor
-	if(a:Options !~? ";LockCur;")
+	"if(a:Options !~? ";LockCur;")
+	"	WHY the HELL it does NOt work?
 		:call JumpAfterAt(l:LineNumber, l:IndentedLines)
-	endif
+		":call cursor(l:LineNumber + len(l:IndentedLines), 1)
+
+		"echo "AddIndentedCodeLinesAt: TEST: Here"
+	
+		"WHY the HELL it does NOt work?
+		":call cursor(5, 1)
+		":call cursor(2, 1)
+	"endif
+
+	:call append(l:LineNumber, l:IndentedLines)
 
 	if IsDebug
 		let debug_lines = []
@@ -1489,12 +1498,22 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 " Returns:
 " 	Index of line, where public lines where inserted
 :function! AddCodeAt(Context, PublicLines, PrivateLines, Options)
+	let IsDebug = 0
 	let l:PublicLineNumber = GetContextLine(a:Context)
 	let l:AddPublic = (a:Options !~ ";NoPublic;")
 
 	"Adding public code
 	let l:BestPublicContext = ContextOrCurr(a:Context, a:Options)
 	let l:EndPublicLineIndex = AddIndentedCodeLinesAt(l:BestPublicContext, a:PublicLines, a:Options)
+
+	if(IsDebug)
+		echo 'DEBUG AddCodeAt'
+		echo 'PublicLineNumber: '.l:PublicLineNumber
+		echo 'EndPublicLineIndex: '.l:EndPublicLineIndex
+	endif
+
+	"Why the hell it does not work ever here?
+	":call cursor(l:EndPublicLineIndex, 1)
 
 	"Adding private code"
 	"WARNING!!! We must recalculate context after public lines are added
