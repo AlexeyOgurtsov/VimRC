@@ -1313,7 +1313,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let IndentParam = GetContextIndentationParam(a:Context)
 
 	"Identation and formatting
-	if(a:Options =~# ";PrepLineBefore;")
+	if(a:Options =~? ";PrepLineBefore;")
 		:call insert(l:IndentedLines, "", 0)
 	endif
 
@@ -1326,16 +1326,16 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 	"Warning! We must prepend line after AFTER we initialized EndLineIndex
 	"(because we need to return the last MEANINGFUL line index)
-	if(a:Options =~# ";PrepLineAfter;")
+	if(a:Options =~? ";PrepLineAfter;")
 		:call add(l:IndentedLines, "")
 	endif
 
-	if(a:Options !~# ";NoDefaultIndent;")
+	if(a:Options !~? ";NoDefaultIndent;")
 		let IndentParam = GetContextIndentationParam(a:Context)
 		"By default we ident on the level of the context PLUS one
 		"However, when a special argument is given, we indent on level
 		"of the context
-		if ((a:Options !~# ";NoPlusOneIndent;") && ContextRequiresExtraIndentation(a:Context, a:Options))
+		if ((a:Options !~? ";NoPlusOneIndent;") && ContextRequiresExtraIndentation(a:Context, a:Options))
 			let IndentParam += 1
 		endif
 		:call IdentBlock(l:IndentedLines, IndentParam)
@@ -1343,16 +1343,15 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 
 	" Appending to buffer
 	let OldEnd = line('$')
+	"WARNING: We must count ONLY start index!
 	let CountLinesBeyondEnd = (EndLineIndex - OldEnd)
 	if (IsDebug)
 		echo "CountLinesBeyondEnd: ".CountLinesBeyondEnd
 	endif
 	if(CountLinesBeyondEnd > 0)
-		let ExtraLineIndex = OldEnd
 		let i = 0
 		:while i < CountLinesBeyondEnd
-			:call append(ExtraLineIndex, [''])
-			let ExtraLineIndex += 1	
+			:call append(line('$'), [''])
 			let i += 1
 		:endwhile
 	endif
@@ -1386,7 +1385,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 "Prepares the buffer code for inserting the private code RIGHT HERE
 "Returns: line where to  insert private lines
 :function! PrepareLines_ForRightHereCode_ReturnInsertLine(PublicContext, EndPublicLineIndex, PrivateLines, Options)
-		let IsDebug = 1
+		let IsDebug = 0
 
 		"Find section if it exists
 		let SectionName = GetSectionName_RightHereForEntity(a:PublicContext)
@@ -1668,7 +1667,7 @@ let g:MaxCount_BaseCmdArgs = 2
 :function! AddSectionBracketLinesAt(Context, SectionName, Comment, Category, Options)
 	let lines = GetSectionBracketLines(a:SectionName, a:Comment, a:Category, a:Options)
 	let NewOps = a:Options.';PrepLineBefore;'
-	let IsDebug = 1
+	let IsDebug = 0
 	if (IsDebug)
 		echo 'DEBUG: AddSectionBracketLinesAt'
 		echo 'GetContextLine: '.GetContextLine(a:Context)

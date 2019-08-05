@@ -80,11 +80,11 @@
 "- All members of GetContextDictAt
 :function! GetUnrealExactContextAt(LineIndex, Options)
 	let l:Context = {}
-	:call extend(l:Context, GetCppContextAt(a:LineIndex, a:Options))
+	:call extend(l:Context, GetCppExactContextAt(a:LineIndex, a:Options))
 	return l:Context
 :endfunction
-:function! GetContextAt(LineIndex, Options)
-	return GetUnrealContextAt(a:LineIndex, a:Options)
+:function! GetExactContextAt(LineIndex, Options)
+	return GetUnrealExactContextAt(a:LineIndex, a:Options)
 :endfunction
 
 "Returns struct or class lines above from options
@@ -364,6 +364,8 @@
 :endfunction
 
 :function! AddCode_UEnumFlags_DefaultMembers(Context, Ops)
+	let IsDebug = 1
+
 	if(a:Ops =~# ";NoDef;")
 		return
 	endif
@@ -373,8 +375,10 @@
 	:call cursor(l:EnumBraceLine, 1)
 
 	" DEBUG {
-		"echo "DEBUG: AddCode_UEnumFlags_DefaultMembers: "
-		"echo "l:EnumBraceLine=".l:EnumBraceLine
+		if(IsDebug)
+			echo "DEBUG: AddCode_UEnumFlags_DefaultMembers: "
+			echo "l:EnumBraceLine=".l:EnumBraceLine
+		endif
 	" DEBUG }
 
 	"Adding the None literal

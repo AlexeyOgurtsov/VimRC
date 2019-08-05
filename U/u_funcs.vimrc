@@ -364,6 +364,8 @@
 :endfunction
 
 :function! AddCode_UEnumFlags_DefaultMembers(Context, Ops)
+	let IsDebug = 1
+
 	if(a:Ops =~# ";NoDef;")
 		return
 	endif
@@ -373,8 +375,10 @@
 	:call cursor(l:EnumBraceLine, 1)
 
 	" DEBUG {
-		"echo "DEBUG: AddCode_UEnumFlags_DefaultMembers: "
-		"echo "l:EnumBraceLine=".l:EnumBraceLine
+		if(IsDebug)
+			echo "DEBUG: AddCode_UEnumFlags_DefaultMembers: "
+			echo "l:EnumBraceLine=".l:EnumBraceLine
+		endif
 	" DEBUG }
 
 	"Adding the None literal
