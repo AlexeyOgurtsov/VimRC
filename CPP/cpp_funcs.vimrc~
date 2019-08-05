@@ -4,8 +4,8 @@
 	return UpdateStringOpenState(a:OpenState, a:Line, "{", "}")
 :endfunction
 
-:function! GetContextAt(LineIndex)
-	return GetCppContextAt(a:LineIndex)
+:function! GetExactContextAt(LineIndex, Options)
+	return GetCppExactContextAt(a:LineIndex, a:Options)
 :endfunction
 
 "Determines, whether the given line string is cpp function header
@@ -450,9 +450,9 @@
 " Cpp Context at the given line
 " Members:
 " -All from Core
-:function! GetCppContextAt(LineIndex)
+:function! GetCppExactContextAt(LineIndex, Options)
 	let l:res = {}
-	:call extend(l:res, GetCoreContextAt(a:LineIndex))
+	:call extend(l:res, GetCoreExactContextAt(a:LineIndex, a:Options))
 	let l:ContextType = ExtractCppContextLines(l:res)
 	return l:res
 :endfunction
@@ -510,7 +510,7 @@
 :function! AddCode_CppComment_IfShould(Context, IsAsterisk, InputLines, Options)
 	let l:lines = GetLines_CppComment_IfShould(a:IsAsterisk, a:InputLines, a:Options)
 	if len(l:lines) > 0
-		let l:res = AddCodeAt(GetBestContext(a:Context), l:lines, [], a:Options)
+		let l:res = AddCodeAt(GetBestContext(a:Context, a:Options), l:lines, [], a:Options)
 	endif
 	return GetContextLine(a:Context)
 :endfunction
@@ -721,7 +721,7 @@
 	if(len(a:ValueStr) > 0)
 		let l:res_line .= ' '
 	endif
-	let l:res_line .= string(a:ValueStr)
+	let l:res_line .= a:ValueStr
 	let l:res_line .= ';'
 	return [ l:res_line ]
 :endfunction
@@ -1630,7 +1630,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	"Add code
 	let l:NewOps = a:OptionString.";PrepLineAfter;"
-	let l:InsertionStartLine = AddCodeAt(GetContextAt(line('.')), l:variable_lines, l:variable_cpp_lines, l:NewOps)
+	let l:InsertionStartLine = AddCodeAt(GetContextAt(line('.'), a:OptionString), l:variable_lines, l:variable_cpp_lines, l:NewOps)
 :endfunction
 
 " Adds variable or field 

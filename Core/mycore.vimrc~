@@ -908,7 +908,7 @@ let g:Context_MaxEnumFlagValue = "ContextMaxEnumFlagValue"
 "Enum flag value that is not assigned yet
 let g:Context_EnumFlagHole_LineIndex = "ContextEnumFlagHoleLineIndex"
 let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
-:function! GetCoreContextAt(LineIndex)
+:function! GetCoreExactContextAt(LineIndex, Options)
 	let l:res = {}
 	"Line
 	let l:res[g:Context_Line] = a:LineIndex
@@ -944,13 +944,37 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let l:res[g:Context_EnumFlagHole_LineIndex] = -1
 	let l:res[g:Context_EnumFlagHoleValue] = -1
 	"TODO
+	
 	return l:res
+:endfunction
+
+"Finds new context based on current options
+"(for example, when specified +/-/# - go to private/public/protected section)
+:function! GetUpdatedContext_FromOptions(Context, Options)
+	let NewLine = GetContextLine(a:Context)
+	"TODO: Search best line
+	let NewOps = a:Options.';ExactContext;'
+	let NewContext = GetContextAt(NewLine, NewOps)
+	return NewContext
 :endfunction
 
 "Warning! Override this function in the concrete files (for cpp, for example),
 "So correct context is used
-:function! GetContextAt(LineIndex)
-	return GetCoreContextAt(a:LineIndex)
+:function! GetExactContextAt(LineIndex, Options)
+	return GetCoreExactContextAt(a:LineIndex, a:Options)
+:endfunction
+
+"Warning! NEVER Override this function! Override GetExactContextAt instead!
+:function! GetContextAt(LineIndex, Options)
+	let l:res = GetExactContextAt(a:LineIndex, a:Options)
+
+	"Finding best context:
+	if(a:Options !~# ';ExactContext;')
+		let l:res = GetUpdatedContext_FromOptions(l:res, a:Options)
+		:call cursor(GetContextLine(l:res), 1)
+	endif
+
+	return l:res
 :endfunction
 
 :function! GetContextLine(Context)
@@ -1114,21 +1138,21 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 :endfunction
 
 "If passed context is empty, uses the default context
-:function! GetBestContext(Context)
+:function! GetBestContext(Context, Options)
 	if a:Context == {}
-		return GetContextAt(line('.'))
+		return GetContextAt(line('.'), a:Options)
 	else
 		return a:Context
 	endif
 :endfunction
 
 :function! GetCurrContext(Options)
-	return GetContextAt(line('.'))
+	return GetContextAt(line('.'), a:Options)
 :endfunction
 
 "Returns given context (or current), honors options
 :function! ContextOrCurr(Context, Options)
-	return GetBestContext(GetCurrContext(a:Options))
+	return GetBestContext(GetCurrContext(a:Options), a:Options)
 :endfunction
 
 "Returns true if the given line consists of whitespaces only or completely
@@ -1222,7 +1246,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	if(l:InsertPrivateHere)
 		let l:InsertLine = a:EndPublicLineIndex + 1
 
-		let l:Context = GetContextAt(l:InsertLine)
+		let l:Context = GetContextAt(l:InsertLine, a:Options)
 		:call AddIndentedCodeLinesAt(l:Context, a:PrivateLines, l:NewOptions)
 	endif
 	
@@ -1260,7 +1284,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 " Returns:
 " 	Index of line, where public lines where inserted
 :function! AddCode(PublicLines, PrivateLines, Options)
-	let l:Context = GetContextAt(line('.'))
+	let l:Context = GetContextAt(line('.'), a:Options)
 	return AddCodeAt(l:Context, a:PublicLines, a:PrivateLines, a:Options)
 :endfunction
 

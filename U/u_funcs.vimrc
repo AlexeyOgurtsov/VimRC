@@ -78,13 +78,13 @@
 "Returns dictionary of context at the given line from the current buffer
 "Members:
 "- All members of GetContextDictAt
-:function! GetUnrealContextAt(LineIndex)
+:function! GetUnrealExactContextAt(LineIndex, Options)
 	let l:Context = {}
-	:call extend(l:Context, GetCppContextAt(a:LineIndex))
+	:call extend(l:Context, GetCppExactContextAt(a:LineIndex, a:Options))
 	return l:Context
 :endfunction
-:function! GetContextAt(LineIndex)
-	return GetUnrealContextAt(a:LineIndex)
+:function! GetExactContextAt(LineIndex, Options)
+	return GetUnrealExactContextAt(a:LineIndex, a:Options)
 :endfunction
 
 "Returns struct or class lines above from options
@@ -271,7 +271,7 @@
 
 		"Context dictionary: includes info about the context:
 		"(See help near the context function definitions)
-		let l:Context = GetContextAt(l:InsertLine)
+		let l:Context = GetContextAt(l:InsertLine, l:OptionString)
 
 		"Calculating lines above (typically UPROPERTY())
 		if (l:OptionString !~# "NoProp;")
