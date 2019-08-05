@@ -836,6 +836,18 @@ let g:AccessType_Public = 1
 let g:AccessType_Protected = 2
 let g:AccessType_Private = 3
 
+:function! GetAccessTypeFromOptions(Options)
+	if(a:Options =~# '+')
+		return g:AccessType_Public
+	elseif(a:Options =~# '#')
+		return g:AccessType_Protected
+	elseif(a:Options =~# '-')
+		return g:AccessType_Private
+	endif
+
+	return g:AccessType_Unknown
+:endfunction
+
 :function! GetAccessTypeString(AccessType)
 	if(a:AccessType == g:AccessType_Unknown)
 		return "Unknown"
@@ -864,6 +876,7 @@ let g:Context_Type = "ContextType"
 " For global context - zero line 
 let g:Context_StartLine = "ContextStartLine"
 let g:Context_OpenBraceLine = "ContextOpenBraceLine"
+let g:Context_HeaderLineIndex = "ContextHeaderLineIndex"
 "End line number of the inner context entity (class, enum, function etc.)
 "Line RIGHT BEFORE the } line
 "For global context - last line of the file
@@ -915,6 +928,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	let l:res[g:Context_Type] = g:ContextType_Unknown
 
 	let l:res[g:Context_StartLine] = 0
+	let l:res[g:Context_HeaderLineIndex] = 0
 	let l:res[g:Context_OpenBraceLine] = 0
 	let l:res[g:Context_EndLine] = line('$')
 	let l:res[g:Context_LinesInsideBody] = []
@@ -948,11 +962,17 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	return l:res
 :endfunction
 
+"Override this function and return new line index for the context
+"(return the same line if context should not be updated)
+:function! GetUpdatedContextLine(Context, Options)
+	return GetContextLine(a:Context)
+:endfunction
+
 "Finds new context based on current options
 "(for example, when specified +/-/# - go to private/public/protected section)
 :function! GetUpdatedContext_FromOptions(Context, Options)
-	let NewLine = GetContextLine(a:Context)
-	"TODO: Search best line
+	let NewLine = GetUpdatedContextLine(a:Context, a:Options)
+
 	let NewOps = a:Options.';ExactContext;'
 	let NewContext = GetContextAt(NewLine, NewOps)
 	return NewContext
@@ -986,6 +1006,10 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 :endfunction
 
 :function! GetContextOpenBraceLine(Context)
+	return a:Context[g:Context_OpenBraceLine]
+:endfunction
+
+:function! GetContextHeaderLineIndex(Context)
 	return a:Context[g:Context_OpenBraceLine]
 :endfunction
 
@@ -1068,6 +1092,9 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 "Transform line index of the context from local (relative to first brace) into
 "global line index (relative to buffer's line)
 :function! LineIndex_LocToBuf(Context, InsideBody_LineIndex)
+	if(a:InsideBody_LineIndex < 0)
+		return -1
+	endif
 	let l:FirstBodyLine_LineIndex_InBuffer = GetContextOpenBraceLine(a:Context) + 1
 	return l:FirstBodyLine_LineIndex_InBuffer + a:InsideBody_LineIndex
 :endfunction
