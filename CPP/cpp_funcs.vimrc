@@ -249,7 +249,12 @@
 :endfunction
 
 :function! ComputeCppEnumContext(OutContext, HeaderLine, LinesInsideBody, Options)
+	let IsDebug = 0
+
 	let a:OutContext[g:Context_NumEnumLiterals] = CalculateNumEnumLiterals(a:LinesInsideBody)
+	if(IsDebug)
+		echo 'DEBUG: ComputeCppEnumContext: NumLiterals='.a:OutContext[g:Context_NumEnumLiterals]
+	endif
 
 	let EnumFlag_LineIndices  = FindLineIndices_EnumFlagLiterals(a:LinesInsideBody)
 

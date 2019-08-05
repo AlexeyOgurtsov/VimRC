@@ -867,7 +867,13 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 "the cursor
 "Returns: New cursor position
 :function! JumpAfterAt(LineNumber, Lines)
+	let IsDebug = 1
 	:let newpos = a:LineNumber + len(a:Lines) 
+	if (IsDebug)
+		echo 'LineNumber='.a:LineNumber
+		echo 'len(a:Lines)='.len(a:Lines)
+		echo 'newpos='newpos
+	endif
 	:call cursor(newpos, 1)
 	return newpos
 :endfunction
@@ -1302,7 +1308,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 "	Index of the last line of inserted code (EXCLUDING extra newlines!) 
 "	(or insert line index, if empty block is inserted)
 :function! AddIndentedCodeLinesAt(Context, Lines, Options)
-	let IsDebug = 1
+	let IsDebug = 0
 	if (IsDebug)
 		echo 'DEBUG: AddIndentedCodeLinesAt'
 	endif 
@@ -1358,7 +1364,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	:call append(l:LineNumber, l:IndentedLines)
 
 	"Cursor
-	if(a:Options !~# ";LockCur;")
+	if(a:Options !~? ";LockCur;")
 		:call JumpAfterAt(l:LineNumber, l:IndentedLines)
 	endif
 
@@ -1696,7 +1702,7 @@ let g:MaxCount_BaseCmdArgs = 2
 	let l:Ops = l:OpsList[0]
 	let l:ContextType = GetContextType(l:Context)
 
-	":call EchoContext(0, "Debug context: CmdFunc_AddCode_CppFunction", l:Context, "")
+	":call EchoContext(0, "Debug context: CmdFunc_AddCode_CppSection", l:Context, "")
 
 	"Checking custom args
 	let l:Name_ArgIndex = 0

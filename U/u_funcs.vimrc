@@ -364,7 +364,7 @@
 :endfunction
 
 :function! AddCode_UEnumFlags_DefaultMembers(Context, Ops)
-	let IsDebug = 1
+	let IsDebug = 0
 
 	if(a:Ops =~# ";NoDef;")
 		return
@@ -383,7 +383,7 @@
 
 	"Adding the None literal
 	:UEn Flags; None 0
-	let l:AfterNoneLocation = line('.')
+	let l:AfterNoneLocation = (line('.'))
 
 	"Adding the Default literal
 	:UEn Flags; Default None	
