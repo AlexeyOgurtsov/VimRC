@@ -406,10 +406,82 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 
 "Extracts default arguments + custom arguments from string
 :function! ExtractDefaultArguments(S, ExtraSeps)
-	let Seps = [ '!', ':', ';', '//', '~']
+	let Seps = [ '!', ':', ';', '//']
 	:call extend(Seps, a:ExtraSeps)
 
 	return ExtractArgumentsFromString(a:S, Seps)
+:endfunction
+
+"Is line of the following forms:
+" '// ~ SectionName Begin
+" '// ~ SectionName Beg
+" '// ~ SectionName {
+" '// ~ SectionName // WARNING!!! NO End or } here!
+:function! IsSectionStartLine(Line, SectionName)
+	let Pattern = '^\s*//\s*\~\s*'
+	let Pattern .= a:SectionName
+	let Pattern .= '\s*\(\|{\|Beg\|Begin\)\s*$'
+	return a:Line =~ Pattern
+:endfunction
+
+"Is line of the following forms:
+" '// ~ SectionName End
+" '// ~ SectionName Beg
+" '// ~ SectionName {'
+:function! IsSectionEndLine(Line, SectionName)
+	let Pattern = '^\s*//\s*\~\s*'
+	let Pattern .= a:SectionName
+	let Pattern .= '\s*\(}\|End\)\s*$'
+	return a:Line =~ Pattern
+:endfunction
+
+
+"Find section start line
+"Returns: -1 if not found
+"Arguments:
+"	StartLine - index of line (in buffer space) where to start the search
+"	EndLine - index of last line to search
+:function! FindSectionStartLine_InRange(StartLine, LastLine, SectionName)
+	let LineIndex = a:StartLine
+	while(LineIndex <= a:LastLine)
+		if(IsSectionStartLine(getline(LineIndex), SectionName))
+			return LineIndex
+		endif
+		let LineIndex += 1
+	endwhile
+	return -1
+:endfunction
+
+"Returns name of value from options string
+"(returns empty string if value name is NOT specified)
+:function! GetValueByPrefixFromOptions(Options, Prefix)
+	let idx_value = stridx(a:Options, a:Prefix)
+	if(idx_value < 0)
+		return ''
+	elseif (idx_value == (len(a:Options) - len(a:Prefix)))
+		"Now name specified after the section char
+		return ''
+	else
+		"Skipping the prefix
+		let idx_value += len(a:Prefix)
+	endif
+	let idx_option_sep_after_value = stridx(a:Options, ';', idx_value)
+	if(idx_option_sep_after_value >= 0)
+		return strpart(a:Options, idx_value, (idx_option_sep_after_value - idx_value))
+	else
+		return strpart(a:Options, idx_value)
+	endif
+
+	"Should not get here
+	return ''
+:endfunction
+
+:function! GetSectionNameFromOptions(Options)
+	return GetValueByPrefixFromOptions(a:Options, '$')
+:endfunction
+
+:function! GetClassNameFromOptions(Options)
+	return GetValueByPrefixFromOptions(a:Options, '^')
 :endfunction
 
 "Joins all elements corresponding the given key into one str
@@ -862,6 +934,7 @@ let g:AccessType_Private = 3
 	endif
 :endfunction
 
+
 " Returns Core context with the given line index
 " Members:
 " Line at which context was taken
@@ -1010,7 +1083,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 :endfunction
 
 :function! GetContextHeaderLineIndex(Context)
-	return a:Context[g:Context_OpenBraceLine]
+	return a:Context[g:Context_HeaderLineIndex]
 :endfunction
 
 :function! GetContextEndLine(Context)
@@ -1204,8 +1277,11 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 "	Index of the last line of inserted code (EXCLUDING extra newlines!) 
 "	(or insert line index, if empty block is inserted)
 :function! AddIndentedCodeLinesAt(Context, Lines, Options)
+	let IsDebug = 0
+
 	let l:LineNumber = GetContextLine(a:Context)
 	let l:IndentedLines = deepcopy(a:Lines)
+	let IndentParam = GetContextIndentationParam(a:Context)
 
 	"Calculate EndLineIndex
 	if (len(l:IndentedLines) > 0)
@@ -1239,6 +1315,15 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	if(a:Options !~# ";LockCur;")
 		:call JumpAfterAt(l:LineNumber, l:IndentedLines)
 	endif
+
+	if IsDebug
+		let debug_lines = []
+		:call add(debug_lines, 'Options:'.a:Options)
+		:call add(debug_lines, 'LineNumber:'.LineNumber)
+		:call add(debug_lines, 'IndentParam:'.IndentParam)
+		:call EchoBlock(0, debug_lines, '')
+	endif
+
 	return EndLineIndex
 :endfunction
 
@@ -1315,3 +1400,226 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	return AddCodeAt(l:Context, a:PublicLines, a:PrivateLines, a:Options)
 :endfunction
 
+"*** Comment
+"Arguments:
+"	InputLines - set of lines passed initially to make comment
+"
+"	IsAsterisk - will use /**/ comment 
+"	(otherwise will use // line comment)
+:function! GetLines_CppComment(IsAsterisk, InputLines, Options)
+	"Ever if we have no lines, and skip comment behaviour is disabled,
+	"we should add comment
+	let l:ShouldSkipComment = (a:Options =~# "SkipEmptyCom;")
+	if (l:ShouldSkipComment && (len(a:InputLines) == 0))
+		return []	
+	endif
+
+	let l:SingleLine = (len(a:InputLines) <= 1) && BoolNot(a:Options =~# "MultiCom;")
+	
+	"Building comment
+	let l:res_lines = deepcopy(a:InputLines)
+	if a:IsAsterisk
+	
+		"Here building /**/ comment
+		if l:SingleLine
+			if (len(a:InputLines) == 0)
+				"We add empty line if comment is empty to force
+				"comment generation
+				:call add(l:res_lines, "")	
+			endif
+			let l:l = '/** '.l:res_lines[0].'*/'
+			let l:res_lines[0] = l:l
+		else
+			"Multiline comment here
+			:call PrependBlock(l:res_lines, "* ")
+			:call insert(l:res_lines, '/**', 0)
+			:call add(l:res_lines, '*/')
+		endif
+	else
+		"Here building // comment
+		if (len(a:InputLines) == 0)
+			"We add empty line if comment is empty to force
+			"comment generation
+			:call add(l:res_lines, "")	
+		endif
+		:call PrependBlock(l:res_lines, '// ')
+	endif
+	return l:res_lines
+:endfunction
+
+" Adds a new comment code at the given context, if it should be done according
+" to options
+" Returns: Index of line, where comment was inserted
+:function! AddCode_CppComment_IfShould(Context, IsAsterisk, InputLines, Options)
+	let l:lines = GetLines_CppComment_IfShould(a:IsAsterisk, a:InputLines, a:Options)
+	if len(l:lines) > 0
+		let l:res = AddCodeAt(GetBestContext(a:Context, a:Options), l:lines, [], a:Options)
+	endif
+	return GetContextLine(a:Context)
+:endfunction
+
+:function! GetLines_CppComment_IfShould(IsAsterisk, InputLines, Options)
+	if (a:Options !~# "NoCom;")
+		let l:lines = GetLines_CppComment(a:IsAsterisk, a:InputLines, a:Options)
+		return l:lines
+	endif
+	return []
+:endfunction
+
+:function! GetLines_DefaultNamedComment_IfShould(IsAsterisk, Name, CommentString, Ops)
+	let l:CommentTextLines = GetLines_DefaultNamedCommentString_Text(a:Name, a:CommentString, a:Ops)
+	let l:CommentLines = GetLines_CppComment_IfShould(a:IsAsterisk, l:CommentTextLines, a:Ops)
+	return l:CommentLines
+:endfunction
+
+:function! GetLines_DefaultNamedCommentString_Text(Name, CommentString, OptionString)
+	let l:comm_lines = [ a:CommentString ] "TODO: Split by string
+	let l:lines = []
+
+	let ShouldUseName = (a:CommentString == '')
+	"At this time we either use a comment or just name
+	let ShouldUseCommentStr = BoolNot(ShouldUseName)
+
+	if ShouldUseName
+		"Use name if comment lines are empty
+		:call add(l:lines, a:Name)
+	endif
+	if ShouldUseCommentStr
+		:call extend(l:lines, l:comm_lines)
+	endif
+	return l:lines
+:endfunction
+
+"Extract common arguments of the command, that are typically specified
+"Arguments to be extracted:
+"	BaseArgs - must be specified as the first argument of Dictionary Type
+"	Ops - must be specified as the SECOND string
+"	(according to default ExtractOptions)
+"Returns: true if failed when extacting arguments
+"Options are returned as a list, where zero element is the passed string of options
+"Custom args - the rest of all unprocessed arguments
+let g:MaxCount_BaseCmdArgs = 2
+:function! ExtractCmdArgs_TrueOnFail(ExtractOptions, ArgList, OutContext, OutBaseArgs, OutOpsList, OutCustomArgs)
+	"Basic arguments"	
+	let l:no_base_args = GetBaseArgsChecked(a:ArgList, a:OutBaseArgs)
+	if l:no_base_args
+		return
+	endif
+
+	"Options
+	if len(a:ArgList) > 1
+		"Options string is specified
+		let l:OpsString = a:ArgList[1]
+	else
+		"Options string is not specified
+		let l:OpsString = ""
+	endif
+	
+	"Add options string to the list of options
+	if len(a:OutOpsList) == 0
+		:call add(a:OutOpsList, l:OpsString)
+	else
+		let a:OutOpsList[0] = l:OpsString
+	endif
+
+	"Extracting custom args
+	if len(a:ArgList) >= g:MaxCount_BaseCmdArgs
+		:call extend(a:OutCustomArgs, a:ArgList[g:MaxCount_BaseCmdArgs:])
+	endif
+		
+	"Current context
+	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
+:endfunction
+
+:function! GetLines_SectionComment_IfShould(Name, CommentString, Category, Ops)
+	let IsAsterisk = 0
+	if(a:CommentString == '')
+		return []
+	endif
+	return GetLines_DefaultNamedComment_IfShould(IsAsterisk, a:Name, a:CommentString, a:Ops)
+:endfunction
+
+:function! GetSectionStartLine(SectionName)
+	return '// ~ '.a:SectionName.' Begin'
+:endfunction
+
+:function! GetSectionEndLine(SectionName)
+	return '// ~ '.a:SectionName.' End'
+:endfunction
+
+"Returns a pair of lines at the given location
+"// ~ SectionName Begin
+"// ~ SectionName End
+:function! GetSectionBracketLines(SectionName, Comment, Category, Options)
+	let lines = []
+	:call add(lines, GetSectionStartLine(a:SectionName))
+	:call extend(lines, GetLines_SectionComment_IfShould(a:SectionName, a:Comment, a:Category, a:Options))
+	:call add(lines, GetSectionEndLine(a:SectionName))
+	return lines
+:endfunction
+
+:function! AddSectionBracketLinesAt(Context, SectionName, Comment, Category, Options)
+	let lines = GetSectionBracketLines(a:SectionName, a:Comment, a:Category, a:Options)
+	let NewOps = a:Options.';PrepLineBefore;'
+	:call AddIndentedCodeLinesAt(a:Context, lines, NewOps)
+:endfunction
+
+:function! AddSectionBracketLinesAtLine(LineNumber, SectionName, Comment, Category, Options)
+	:call AddSectionBracketLinesAt(GetContextAt(a:LineNumber, a:Options), a:SectionName, a:Comment, a:Category, a:Options)
+:endfunction
+
+:function! AddSectionBracketLines(SectionName, Comment, Category, Options)
+	:call AddSectionBracketLinesAt(GetCurrContext(a:Options), a:SectionName, a:Comment, a:Category, a:Options)
+:endfunction
+
+:function! CmdFunc_AddCode_Section(...)
+	let l:ShowDebugLines = 0
+
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+	let l:ContextType = GetContextType(l:Context)
+
+	":call EchoContext(0, "Debug context: CmdFunc_AddCode_CppFunction", l:Context, "")
+
+	"Checking custom args
+	let l:Name_ArgIndex = 0
+	let l:RestArgs_ArgIndex = 1
+	if NoArg(1, l:MyArgs, "Name", l:Name_ArgIndex)
+		return 0
+	endif
+	let l:Name = l:MyArgs[l:Name_ArgIndex]
+	let RestOfString = GetOrDefault(l:MyArgs, l:RestArgs_ArgIndex, '')
+	let l:RestArgs_Dict = ExtractDefaultArguments(RestOfString, [])
+
+	let l:Comment = GetComment_FromExtractedDict(l:RestArgs_Dict)
+	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RestArgs_Dict)
+	let l:Category = GetJoinedCategories_FromExtractedDict(l:RestArgs_Dict)
+
+	"Update the global ops with extra ops:
+	let l:Ops .= ';'.l:ExtraOps.';'
+
+	"DEBUG {
+		if l:ShowDebugLines
+			let l:DebugLines = []
+			:call add(l:DebugLines, "DEBUG CmdFunc_AddCode_Section: ")
+			:call add(l:DebugLines, "Comment=".l:Comment)
+			:call EchoBlock(0, l:DebugLines, "")
+		endif
+	"DEBUG }
+	"
+	
+	:call AddSectionBracketLines(l:Name, l:Comment, l:Category, l:Ops)
+
+	return 1
+:endfunction
+
+"Add section of form // ~ Section Name Begin
+:command! -nargs=* Sect :call CmdFunc_AddCode_Section({}, <f-args>)
+
+:source D:/!DV_SCRIPT/VIM/CONFIG/Core/mycore_keys.vimrc

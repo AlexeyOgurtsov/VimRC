@@ -352,6 +352,8 @@
 
 "Determine cpp context lines and its type
 :function! ExtractCppContextLines(OutCppContext)
+	let IsDebug = 0
+
 	let l:ContextType = g:ContextType_Unknown
 
 	let l:ContextLine = GetContextLine(a:OutCppContext)
@@ -448,6 +450,11 @@
 		let a:OutCppContext[g:Context_EndLine] = line('$')
 
 		let a:OutCppContext[g:Context_IndentationParam] = 0 "TODO: Calculate based on the current namespace
+	endif
+
+	if IsDebug
+		echo 'ExtractCppContextLines'
+		:call EchoContext(0, 'Context', a:OutCppContext, '')
 	endif
 
 	return l:ContextType
@@ -590,103 +597,20 @@
 	return NewLineIndex
 :endfunction
 
-"*** Comment
-"Arguments:
-"	InputLines - set of lines passed initially to make comment
-"
-"	IsAsterisk - will use /**/ comment 
-"	(otherwise will use // line comment)
-:function! GetLines_CppComment(IsAsterisk, InputLines, Options)
-	"Ever if we have no lines, and skip comment behaviour is disabled,
-	"we should add comment
-	let l:ShouldSkipComment = (a:Options =~# "SkipEmptyCom;")
-	if (l:ShouldSkipComment && (len(a:InputLines) == 0))
-		return []	
-	endif
-
-	let l:SingleLine = (len(a:InputLines) <= 1) && BoolNot(a:Options =~# "MultiCom;")
-	
-	"Building comment
-	let l:res_lines = deepcopy(a:InputLines)
-	if a:IsAsterisk
-	
-		"Here building /**/ comment
-		if l:SingleLine
-			if (len(a:InputLines) == 0)
-				"We add empty line if comment is empty to force
-				"comment generation
-				:call add(l:res_lines, "")	
-			endif
-			let l:l = '/** '.l:res_lines[0].'*/'
-			let l:res_lines[0] = l:l
-		else
-			"Multiline comment here
-			:call PrependBlock(l:res_lines, "* ")
-			:call insert(l:res_lines, '/**', 0)
-			:call add(l:res_lines, '*/')
-		endif
-	else
-		"Here building // comment
-		if (len(a:InputLines) == 0)
-			"We add empty line if comment is empty to force
-			"comment generation
-			:call add(l:res_lines, "")	
-		endif
-		:call PrependBlock(l:res_lines, '// ')
-	endif
-	return l:res_lines
-:endfunction
-
-" Adds a new comment code at the given context, if it should be done according
-" to options
-" Returns: Index of line, where comment was inserted
-:function! AddCode_CppComment_IfShould(Context, IsAsterisk, InputLines, Options)
-	let l:lines = GetLines_CppComment_IfShould(a:IsAsterisk, a:InputLines, a:Options)
-	if len(l:lines) > 0
-		let l:res = AddCodeAt(GetBestContext(a:Context, a:Options), l:lines, [], a:Options)
-	endif
-	return GetContextLine(a:Context)
-:endfunction
-
-:function! GetLines_CppComment_IfShould(IsAsterisk, InputLines, Options)
-	if (a:Options !~# "NoCom;")
-		let l:lines = GetLines_CppComment(a:IsAsterisk, a:InputLines, a:Options)
-		return l:lines
-	endif
-	return []
-:endfunction
-
-:function! GetLines_DefaultNamedCommentString_Text(Name, CommentString, OptionString)
-	let l:comm_lines = [ a:CommentString ] "TODO: Split by string
-	let l:lines = []
-
-	let ShouldUseName = (a:CommentString == '')
-	"At this time we either use a comment or just name
-	let ShouldUseCommentStr = BoolNot(ShouldUseName)
-
-	if ShouldUseName
-		"Use name if comment lines are empty
-		:call add(l:lines, a:Name)
-	endif
-	if ShouldUseCommentStr
-		:call extend(l:lines, l:comm_lines)
-	endif
-	return l:lines
-:endfunction
-
 :function! GetLines_GetVarOrFieldCommentText(IsField, TypeName, Name, InitExpr, OptionString)
 	return GetLines_DefaultNamedCommentString_Text(a:Name, "", a:OptionString)
-:endfunction
-
-:function! GetLines_DefaultNamedComment_IfShould(IsAsterisk, Name, CommentString, Ops)
-	let l:CommentTextLines = GetLines_DefaultNamedCommentString_Text(a:Name, a:CommentString, a:Ops)
-	let l:CommentLines = GetLines_CppComment_IfShould(a:IsAsterisk, l:CommentTextLines, a:Ops)
-	return l:CommentLines
 :endfunction
 
 :function! GetLines_GetVarOrFieldComment_IfShould(IsField, TypeName, Name, InitExpr, OptionString)
 	let l:CommentTextLines = GetLines_GetVarOrFieldCommentText(a:IsField, a:TypeName, a:Name, a:InitExpr, a:OptionString)
 	let l:IsAsterisk = 1
+	let l:CommentLines = GetLines_CppComment_IfShould(l:IsAsterisk, l:CommentTextLines, a:OptionString)
+	return l:CommentLines
+:endfunction
+
+:function! GetLines_GetSectionComment_IfShould(IsField, TypeName, Name, InitExpr, OptionString)
+	let l:CommentTextLines = GetLines_GetVarOrFieldCommentText(a:IsField, a:TypeName, a:Name, a:InitExpr, a:OptionString)
+	let l:IsAsterisk = 0
 	let l:CommentLines = GetLines_CppComment_IfShould(l:IsAsterisk, l:CommentTextLines, a:OptionString)
 	return l:CommentLines
 :endfunction
@@ -1803,47 +1727,6 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 		:call AddCode_CppVarOrField(IsField, LinesAbove, OptionString, TypeName, Name, InitializerExpression)
 	endif
-:endfunction
-
-"Extract common arguments of the command, that are typically specified
-"Arguments to be extracted:
-"	BaseArgs - must be specified as the first argument of Dictionary Type
-"	Ops - must be specified as the SECOND string
-"	(according to default ExtractOptions)
-"Returns: true if failed when extacting arguments
-"Options are returned as a list, where zero element is the passed string of options
-"Custom args - the rest of all unprocessed arguments
-let g:MaxCount_BaseCmdArgs = 2
-:function! ExtractCmdArgs_TrueOnFail(ExtractOptions, ArgList, OutContext, OutBaseArgs, OutOpsList, OutCustomArgs)
-	"Basic arguments"	
-	let l:no_base_args = GetBaseArgsChecked(a:ArgList, a:OutBaseArgs)
-	if l:no_base_args
-		return
-	endif
-
-	"Options
-	if len(a:ArgList) > 1
-		"Options string is specified
-		let l:OpsString = a:ArgList[1]
-	else
-		"Options string is not specified
-		let l:OpsString = ""
-	endif
-	
-	"Add options string to the list of options
-	if len(a:OutOpsList) == 0
-		:call add(a:OutOpsList, l:OpsString)
-	else
-		let a:OutOpsList[0] = l:OpsString
-	endif
-
-	"Extracting custom args
-	if len(a:ArgList) >= g:MaxCount_BaseCmdArgs
-		:call extend(a:OutCustomArgs, a:ArgList[g:MaxCount_BaseCmdArgs:])
-	endif
-		
-	"Current context
-	:call ResetDict(a:OutContext, ContextOrCurr(GetCmdBase_Context(a:OutBaseArgs), l:OpsString))
 :endfunction
 
 :function! GetLines_EnumClass(BaseArgs, Ops, Context, LinesAbove, LinesBelow, Name)
