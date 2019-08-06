@@ -869,11 +869,12 @@ let g:FuncGenArgIndex_CommentTextLines =6 "Comment lines
 :function! JumpAfterAt(LineNumber, Lines)
 	let IsDebug = 0
 	:let newpos = a:LineNumber + len(a:Lines)
-	:call cursor(newpos, 1)
+	:call setpos('.', [0, newpos, 1, 0])
+	":call cursor(newpos, 1)
 	if (IsDebug)
 		echo 'LineNumber='.a:LineNumber
 		echo 'len(a:Lines)='.len(a:Lines)
-		echo 'newpos='newpos
+		echo 'newpos='.newpos
 	endif
 	return newpos
 :endfunction
@@ -1366,6 +1367,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	"if(a:Options !~? ";LockCur;")
 	"	WHY the HELL it does NOt work?
 		:call JumpAfterAt(l:LineNumber, l:IndentedLines)
+		:redraw!
 		":call cursor(l:LineNumber + len(l:IndentedLines), 1)
 
 		"echo "AddIndentedCodeLinesAt: TEST: Here"
@@ -1376,6 +1378,7 @@ let g:Context_EnumFlagHoleValue = "ContextEnumFlagHoleValue"
 	"endif
 
 	:call append(l:LineNumber, l:IndentedLines)
+	:redraw!
 
 	if IsDebug
 		let debug_lines = []

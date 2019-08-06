@@ -12,6 +12,7 @@
 "Function
 ":map <F6> :UF ; N
 :map <F6> :UF ; 
+:map <C-F6> :UF ;PrivHere; 
 
 "Struct/Class
 ":map <F2> :UStru ;Op1;Op2; F

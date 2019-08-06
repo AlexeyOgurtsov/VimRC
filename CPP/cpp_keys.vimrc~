@@ -35,7 +35,7 @@
 :map <S-F2> :TStru ; {"T":"class"} 
 
 ":map <A-C-F2> :Cla ;Op1;Op2; D
-:map <A-C-F2> :Cla ;
+:map <A-C-F2> :Cla ; 
 :map <C-F2> :Cla ; 
 
 ":map <A-S-C-F2> :TCla ;Op1;Op2; {"T":"class"} F

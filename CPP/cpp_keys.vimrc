@@ -18,6 +18,8 @@
 ":map <A-F6> :F ; N
 :map <A-F6> :F ; 
 :map <F6> :F ; 
+:map <C-A-F6> :F ;PrivHere; 
+:map <C-F6> :F ;PrivHere; 
 
 "Struct/Class
 "Old command

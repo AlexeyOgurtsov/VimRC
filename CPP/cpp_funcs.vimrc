@@ -1451,6 +1451,7 @@
 :endfunction
 "General function for adding code of class
 :function! AddCode_CppClass_General(Name, TemplParams, IsStruct, OptionString, ExtraPrivateLinesAbove, ExtraLinesAbove)
+	let IsDebug = 0
 	"Calculate lines"
 	let l:PrivLines = []
 	let l:PublicLines = GetLines_CppClass_General(l:PrivLines, a:Name, a:TemplParams, a:IsStruct, a:OptionString, a:ExtraPrivateLinesAbove, a:ExtraLinesAbove)
@@ -1459,7 +1460,15 @@
 
 	let l:Ops = a:OptionString.";PrepLineAfter;"
 	:call AddCodeAt(l:Context, l:PublicLines, l:PrivLines, l:Ops)
-	"TODO Cursor jumping
+
+	"Cursor jumping
+	let NewClassContext = GetContextAt(GetContextLine(l:Context), l:Ops)
+	if IsDebug
+		echo 'DEBUG: AddCode_CppClass_General'
+		:call EchoContext(0, 'NewClassContext', NewClassContext, '')
+	endif
+	"Jump to end of class
+	":call cursor(GetContextEndLine(NewClassContext), 1)
 :endfunction
 " Adds code of cpp struct with default options
 :function! AddCode_CppClass_GeneralDefault(IsStruct, Name, TemplParams, OptionString, ExtraPrivateLinesAbove, ExtraLinesAbove)
