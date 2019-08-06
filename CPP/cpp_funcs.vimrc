@@ -1886,10 +1886,22 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:Ops = l:OpsList[0]
 	let l:ContextType = GetContextType(l:Context)
 
+	let l:Name_ArgIndex = 0
+	let l:RestString_ArgIndex = 1
 	"Checking custom args
-	if NoArg(1, l:MyArgs, "Name", 0)
+	if NoArg(1, l:MyArgs, "Name", l:Name_ArgIndex)
 		return 0
 	endif
+
+	let RestOfArgs = ListRestAsString(l:MyArgs, l:RestString_ArgIndex)
+	let l:RestArgs_Dict = ExtractDefaultArguments(RestOfArgs, [])
+
+	let l:Comment = GetComment_FromExtractedDict(l:RestArgs_Dict)
+	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RestArgs_Dict)
+	let l:Category = GetJoinedCategories_FromExtractedDict(l:RestArgs_Dict)
+
+	"Update the global ops with extra ops:
+	let l:Ops .= ';'.l:ExtraOps.';'
 
 	"Is templated class"
 	let l:IsTempl = GetKey_IntType(l:BaseArgs, "IsTempl")
