@@ -2290,9 +2290,9 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	:endif
 
 	if(l:NamePrefix == 'b')
-		let l:NewGetterName = 'Is'.l:CommonName
+		let l:NewGetterName = 'Is'.GetFixedName(l:CommonName)
 	else
-		let l:NewGetterName = 'Get'.l:CommonName
+		let l:NewGetterName = 'Get'.GetFixedName(l:CommonName)
 	endif
 
 	:call SetFuncName(l:NewArgs, l:NewGetterName)
@@ -2302,14 +2302,27 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	"Getters are to be provided for public access by default
 	:call AddFuncOps(l:NewArgs, ';+;')
 
-	"Checking return type
+	"Trying to fix return type
 	let l:OldRetType = GetFuncRetType(l:NewArgs)
-	if(l:OldRetType == '' || l:OldRetType == 'void')
-		"TODO: Fix return type 
-		"(based on return type of the given var, if it exists)
 
-		echoerr "Getter must have return type"
-		return []
+
+	"Checking return type
+	if(IsVoidType(l:OldRetType))
+		let l:FixedRetType = l:OldRetType
+		if(l:NamePrefix == 'b')
+			let l:FixedRetType = 'bool'
+		endif
+
+		if(IsVoidType(l:FixedRetType))
+			"TODO: Fix return type 
+			"(based on return type of the given var, if it exists)
+
+			echoerr "Getter must have return type"
+			return []
+		endif
+
+		"Fixing the ret type
+		:call SetFuncRetType(l:NewArgs, l:FixedRetType)
 	endif
 
 	
