@@ -1694,7 +1694,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 "Adds properly indented cpp variable of field text at current line
 "(warning! Adds ONLY variable text, NO getters or setters etc.)
 "Arguments: see the corresponding CmdFunc
-:function! AddCode_CppVarOrField(IsField, LinesAbove, OptionString, TypeName, Name, InitExpr)
+:function! AddCode_CppVarOrField(IsField, Category, LinesAbove, OptionString, TypeName, Name, InitExpr)
 	"Reserved for impl, for example initializers for static variables"
 	let l:variable_cpp_lines = []
 	"Variable declaration itself
@@ -1705,8 +1705,10 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let Context = GetContextAt(line('.'), a:OptionString)
 	let l:InsertionStartLine = AddCodeAt(Context, l:variable_lines, l:variable_cpp_lines, l:NewOps)
 
+	"TODO: Add getter
+
 	"Hack: change cursor position
-	:call JumpAfterAt(GetContextLine(Context), l:variable_lines)
+	":call JumpAfterAt(GetContextLine(Context), l:variable_lines)
 :endfunction
 
 " Adds variable or field 
@@ -1730,6 +1732,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let IsField = a:000[g:AddCode_CppVarOrField_IsField_ArgIndex]
 	let LinesAbove = a:000[g:AddCode_CppVarOrField_LinesAbove_ArgIndex]
 	let OptionString = a:000[g:AddCode_CppVarOrField_OptionString_ArgIndex]
+	let Category = '' "TODO
 
 	if n < 2
 		echoerr "OptionString, TypeName and Name must be specified"
@@ -1744,7 +1747,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 			let InitializerExpression = "" "TODO: Should we choose default initializer
 		endif
 
-		:call AddCode_CppVarOrField(IsField, LinesAbove, OptionString, TypeName, Name, InitializerExpression)
+		:call AddCode_CppVarOrField(IsField, Category, LinesAbove, OptionString, TypeName, Name, InitializerExpression)
 	endif
 :endfunction
 
@@ -2136,6 +2139,14 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return l:NewArgs
 :endfunction
 
+"This function is TO BE overriden in the concrete module (u, for example)
+"Called AFTER core arguments have been updated
+"Returns: updated function args
+:function! CmdFunc_Module_GetUpdatedCppFunctionArgs(Context, FuncArgs)
+	let l:NewArgs = deepcopy(a:FuncArgs)
+	return l:NewArgs
+:endfunction
+
 
 " Returns updated function args based on context
 :function! CmdFunc_GetUpdatedCppFunctionArgs(Context, FuncArgs)
@@ -2158,9 +2169,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		let l:MemberName = strpart(l:Name, 2)
 	endif
 
-	if( l:ContextType == g:ContextType_Class )
-		"TODO
-	endif
+	let l:NewArgs = CmdFunc_Module_GetUpdatedCppFunctionArgs(a:Context, l:NewArgs)
 
 	return l:NewArgs
 :endfunction

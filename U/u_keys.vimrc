@@ -8,6 +8,8 @@
 "Property/Field
 ":map <F5> :UPr ;Op1;Op2; Misc int32 Name 0
 :map <F5> :UPr ; Misc
+"Adding component property
+:map <C-F5> :UPr ;EdDef;Comp; Misc
 
 "Function
 ":map <F6> :UF ; N
