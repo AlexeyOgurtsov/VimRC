@@ -188,6 +188,59 @@
 	return JoinRestList(a:L, ' ', a:StartIndex)
 :endfunction
 
+"Makes argument string for the given command
+:function! GetWithAppendedArgString_FromDictOfList_ByKey(SourceStr, ArgDict, Key)
+	let l:s = a:SourceStr
+	let val_list = a:ArgDict[a:Key]
+	if len(val_list) > 0 
+		if(len(l:s) > 0)
+			let l:s .= ' '
+		endif
+		let l:s .= a:Key
+		"WARNING! We use double separator here (first opens, second -
+		"closes)
+		let l:s .= JoinRestList(val_list, a:Key.a:Key, 0)
+	endif	
+	return l:s
+:endfunction
+
+:function! ArgString_FromDictOfList(ArgDict)
+	let l:s = ''
+	if(has_key(a:ArgDict, '') && len(a:ArgDict['']) > 0) 
+		let l:s = GetWithAppendedArgString_FromDictOfList_ByKey(l:s, a:ArgDict, '')
+	endif
+	for Key in keys(a:ArgDict)
+		if(Key != '')
+			let l:s = GetWithAppendedArgString_FromDictOfList_ByKey(l:s, a:ArgDict, Key)
+		endif
+	endfo	
+	return l:s
+:endfunction
+
+"Returns arg string: main string and body string"
+:function! MakeArgString_MainAndBody(MainArgDict, BodyString)
+	let l:s = ''
+		let l:MainArgDictString = ArgString_FromDictOfList(a:MainArgDict)
+		if(len(l:MainArgDictString) > 0)
+			let l:s .= l:MainArgDictString
+		endif
+
+		if(len(a:BodyString) > 0)
+			if(len(l:s) > 0)
+				let l:s .= ' '
+			endif
+			let l:s .= '@'
+			let l:s .= a:BodyString
+		endif
+	return l:s
+:endfunction
+
+"Make argument for function-style command (for function command or variable
+"command)
+:function! MakeCommandArgs_FunctionStyle(Name, MainArgDict, BodyString)
+	return ' ; '.a:Name.' '.MakeArgString_MainAndBody(a:MainArgDict, a:BodyString)	
+:endfunction
+
 let g:VariableGenArgIndex_Name = 0
 let g:VariableGenArgIndex_RetType = 1
 let g:VariableGenArgIndex_Initializer = 2

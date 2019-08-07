@@ -1762,6 +1762,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	let g:CppVariableCmd_Name_ArgIndex = 0
 	let g:CppVariableCmd_RestString_ArgIndex = 1
+
 :function! GetUpdatedVariableArgs_FromRestOfArgs(Context, BaseArgs, MyArgs, RestArgsString, Options) 
 
 	"Checking custom args
@@ -1800,8 +1801,9 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		"let l:Comment = 'Comment'
 	"DEBUG }
 
+	"Updating args
 
-	"Check for return value and arguments validity
+	"Check for return value and arguments validity after updated
 	if (InvalidVarArgs(l:RestArgs_Dict))
 		return 0
 	endif
@@ -2286,6 +2288,12 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:NewArgs = CmdFunc_Module_GetUpdatedCppFunctionArgs(a:Context, l:NewArgs)
 
 	return l:NewArgs
+:endfunction
+
+"Call most decent 'Add function' command with the given args
+"WARNING!!! Override in the derived class!
+:function! ExecuteCmd_AddCppFunction(FuncName, MainArgDict, BodyString)
+	:execute(':F '.MakeCommandArgs_FunctionStyle(a:FuncName, a:MainArgDict, a:BodyString))
 :endfunction
 
 :function! CmdFunc_AddCode_CppFunction(...)
