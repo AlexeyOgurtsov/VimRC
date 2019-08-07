@@ -1781,11 +1781,6 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	""-Categry (!)
 	let l:RestArgs_Dict = ExtractDefaultArguments(l:RestArgs, [])
 
-	"Check for return value and arguments validity
-	if (InvalidVarArgs(l:RestArgs_Dict))
-		return 0
-	endif
-
 	let l:TypeName = GetReturnType_FromExtractedDict(l:RestArgs_Dict)
 	let l:Comment = GetComment_FromExtractedDict(l:RestArgs_Dict)
 	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RestArgs_Dict)
@@ -1804,6 +1799,12 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		"let l:Category = 'Category'
 		"let l:Comment = 'Comment'
 	"DEBUG }
+
+
+	"Check for return value and arguments validity
+	if (InvalidVarArgs(l:RestArgs_Dict))
+		return 0
+	endif
 
 	let VariableGenArgList = MakeVariableGenArgs(l:FixedName, l:TypeName, l:InitializerStr, l:Ops, l:Category, l:Comment)
 	return VariableGenArgList

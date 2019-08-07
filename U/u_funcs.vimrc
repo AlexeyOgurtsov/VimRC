@@ -286,8 +286,51 @@
 	endif
 :endfunction
 
-:function! CmdFunc_AddCode_UProp(...)
+:function! GetUpdated_UPropArgs_FromRestOfArgs(Context, BaseArgs, MyArgs, RestArgsString, Options)
+	let l:UpdatedArgs = GetUpdatedVariableArgs_FromRestOfArgs(a:Context, a:BaseArgs, a:MyArgs, a:RestArgsString, a:Options)
 	"TODO
+	return l:UpdatedArgs
+:endfunction
+
+:function! CmdFunc_AddCode_UProp(...)
+	let IsDebug = 0
+
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+	let l:ContextType = GetContextType(l:Context)
+
+	let RestOfArgs = ListRestAsString(l:MyArgs, g:CppVariableCmd_RestString_ArgIndex)
+
+	"Updating the args
+	let l:UpdatedGenArgs = GetUpdated_UPropArgs_FromRestOfArgs(l:Context, l:BaseArgs, l:MyArgs, l:RestOfArgs, l:Ops)
+	if(l:UpdatedGenArgs == [])
+		return 0
+	endif
+
+	"Calculating lines above (typically UPROPERTY())
+	"(WARNING! Awlays to be done AFTER the generation args are updated!)
+	let l:Ops = GetVariableOps(l:UpdatedGenArgs)
+	if (l:Ops !~? ";NoProp;")
+		let l:LinesAbove = [ GetUPropertyLine_ForVar(l:Context, l:Ops, GetVariableRetType(l:UpdatedGenArgs), GetVariableName(l:UpdatedGenArgs), GetVariableCategory(l:UpdatedGenArgs)) ]
+		let l:IsField = 1
+	else
+		let l:LinesAbove = []
+		let l:IsField = 0
+	endif
+
+	"Calling the command
+	let l:NewArgs = deepcopy(a:000)
+	let l:NewArgs[g:BaseArgsIndex]['LinesAbove'] = l:LinesAbove
+	let l:NewArgs[g:BaseArgsIndex]['IsField'] = l:IsField
+	"TODO: Commit updated args here
+	:call call(function("CmdFunc_AddCode_CppVar"), l:NewArgs)
+	return 1
 :endfunction
 
 :function! GetUEnumClass_LinesAbove(IsFlags, OpsList, Name, Category)
