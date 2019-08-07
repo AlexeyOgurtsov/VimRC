@@ -1707,11 +1707,21 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return l:lines
 :endfunction
 
+:function! IsNonVoidType(TypeStr)
+	return ((a:TypeStr != 'void') && (a:TypeStr != ''))
+:endfunction
+
+:function! IsVoidType(TypeStr)
+	return BoolNot(IsNonVoidType(a:TypeStr))
+:endfunction
+
 "Adds properly indented cpp variable of field text at current line
 "(warning! Adds ONLY variable text, NO getters or setters etc.)
 "Arguments: see the corresponding CmdFunc
 :function! AddCode_CppVarOrField(Context, BaseArgs, GenArgs)
 	let IsDebug = 0
+
+	let l:ContextType = GetContextType(a:Context)
 
 	"Reserved for impl, for example initializers for static variables"
 	let l:variable_cpp_lines = []
@@ -1726,10 +1736,16 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	"Add code
 	let l:NewOps = l:Ops.";PrepLineAfter;"
-	let Context = GetContextAt(line('.'), l:Ops)
-	let l:InsertionStartLine = AddCodeAt(Context, l:variable_lines, l:variable_cpp_lines, l:NewOps)
+	let NewContext = GetContextAt(line('.'), l:Ops)
+	let l:InsertionStartLine = AddCodeAt(NewContext, l:variable_lines, l:variable_cpp_lines, l:NewOps)
 
-	"TODO: Add getter
+	if(l:ContextType == g:ContextType_Class)
+		if((l:NewOps !~? ';nog;') && (l:NewOps !~? 'noget'))
+			"TODO: Check here: getter should not be added if we
+			"adding variable inside the public access section
+			:call ExecuteCmd_AddCppGetter_ForVariable(a:GenArgs)
+		endif
+	endif
 :endfunction
 
 :function! IsFieldContextType(ContextType)
@@ -1746,9 +1762,13 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return 1
 :endfunction
 
-:function! InvalidVarArgs(ArgsDict)
-	"TODO: Check that return type is explicitly set
-	return InvalidFunctionArgs(a:ArgsDict)
+:function! InvalidVarArgs(GenArgList)
+	let l:TypeName = GetVariableRetType(a:GenArgList)
+	if(IsVoidType(l:TypeName))
+		echoerr 'Return type must always be set for variables!'
+		return 1
+	endif
+	return 0
 :endfunction
 
 :function! GetInitializer_FromArgs(MainAndInitializer)
@@ -1803,12 +1823,12 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	"Updating args
 
+	let VariableGenArgList = MakeVariableGenArgs(l:FixedName, l:TypeName, l:InitializerStr, l:Ops, l:Category, l:Comment)
 	"Check for return value and arguments validity after updated
-	if (InvalidVarArgs(l:RestArgs_Dict))
-		return 0
+	if (InvalidVarArgs(VariableGenArgList))
+		return []
 	endif
 
-	let VariableGenArgList = MakeVariableGenArgs(l:FixedName, l:TypeName, l:InitializerStr, l:Ops, l:Category, l:Comment)
 	return VariableGenArgList
 :endfunction
 
@@ -2288,6 +2308,35 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:NewArgs = CmdFunc_Module_GetUpdatedCppFunctionArgs(a:Context, l:NewArgs)
 
 	return l:NewArgs
+:endfunction
+
+:function! MakeCommonArgsDictOfList_ForVariable(GenArgs)
+	let L =  {}
+
+	let L[';'] = [GetVariableOps(a:GenArgs)]
+	let L['//'] = [GetVariableCommentTextLines(a:GenArgs)]
+	let L['!'] = [GetVariableCategory(a:GenArgs)]
+	let L[':'] = [GetVariableRetType(a:GenArgs)]
+	
+	return L
+:endfunction
+
+:function! ExecuteCmd_AddCppGetter_ForVariable(GenArgs)
+	let IsDebug = 0
+
+	let BodyString = '' "BodyString is to be empty, because the body is to be computed automatically for getter
+	let FuncName = '.'.GetVariableName(a:GenArgs) "Special name for getter
+
+	let ArgsDictOfList = MakeCommonArgsDictOfList_ForVariable(a:GenArgs)
+	"WARNING! We must never copy comments from variable to getter
+	let ArgsDictOfList['//'] = []
+
+	if(IsDebug)
+		echo 'DEBUG: AddCppGetter_ForVariable'
+		echo ArgsDictOfList
+	endif
+
+	:call ExecuteCmd_AddCppFunction(FuncName, ArgsDictOfList, '')
 :endfunction
 
 "Call most decent 'Add function' command with the given args
