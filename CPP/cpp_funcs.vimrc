@@ -1680,38 +1680,53 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 :endfunction
 
 :function! GetLines_CppVarOrField(OutCppLines, Context, BaseArgs, GenArgs)
-	let l:IsField = a:BaseArgs[0]['IsField']
-	let l:LinesAbove = a:BaseArgs[0]['LinesAbove']
+	let IsDebug = 0
+
+	let l:IsField = a:BaseArgs['IsField']
+	let l:LinesAbove = a:BaseArgs['LinesAbove']
 	let l:Ops = GetVariableOps(a:GenArgs)
 
 	let l:Name = GetVariableName(a:GenArgs)
 	let l:TypeName = GetVariableRetType(a:GenArgs)
 	let l:InitExpr = GetVariableInitializer(a:GenArgs)
 
+	if(IsDebug)
+		echo 'Name'.l:Name
+		echo 'TypeName'.l:TypeName
+		echo 'InitExpr'.l:InitExpr
+	endif
+
 	let l:lines = []
 	"add comment
-	let l:CommentLines = GetLines_GetVarOrFieldComment_IfShould(a:IsField, a:TypeName, a:Name, a:InitExpr, l:Ops)
+	let l:CommentLines = GetLines_GetVarOrFieldComment_IfShould(l:IsField, l:TypeName, l:Name, l:InitExpr, l:Ops)
 	:call extend(l:lines, l:CommentLines)
 	"Adding lines above
-	:call extend(l:lines, a:LinesAbove)
+	:call extend(l:lines, l:LinesAbove)
 	"Add the main line
-	:call add(l:lines, GetCppVar_MainLine(a:IsField, l:Ops, l:TypeName, l:Name, l:InitExpr).";")
+	:call add(l:lines, GetCppVar_MainLine(l:IsField, l:Ops, l:TypeName, l:Name, l:InitExpr).";")
 	return l:lines
 :endfunction
 
 "Adds properly indented cpp variable of field text at current line
 "(warning! Adds ONLY variable text, NO getters or setters etc.)
 "Arguments: see the corresponding CmdFunc
-:function! AddCode_CppVarOrField(IsField, Comment, Category, LinesAbove, OptionString, TypeName, Name, InitExpr)
+:function! AddCode_CppVarOrField(Context, BaseArgs, GenArgs)
+	let IsDebug = 0
+
 	"Reserved for impl, for example initializers for static variables"
 	let l:variable_cpp_lines = []
-	"Variable declaration itself
-	"TODO
-	"let l:variable_lines = GetLines_CppVarOrField(l:variable_cpp_lines, a:IsField, a:LinesAbove, a:OptionString, a:TypeName, a:Name, a:InitExpr)
+	let l:Ops = GetVariableOps(a:GenArgs)
+
+	if(IsDebug)
+		:call EchoVariableGenArgs(a:GenArgs)
+	endif
+
+	" Geting lines of the variable declaration
+	let l:variable_lines = GetLines_CppVarOrField(l:variable_cpp_lines, a:Context, a:BaseArgs, a:GenArgs)
 
 	"Add code
-	let l:NewOps = a:OptionString.";PrepLineAfter;"
-	let Context = GetContextAt(line('.'), a:OptionString)
+	let l:NewOps = l:Ops.";PrepLineAfter;"
+	let Context = GetContextAt(line('.'), l:Ops)
 	let l:InsertionStartLine = AddCodeAt(Context, l:variable_lines, l:variable_cpp_lines, l:NewOps)
 
 	"TODO: Add getter
@@ -1780,9 +1795,17 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:Ops .= ';'.l:ExtraOps.';'
 
 	let l:FixedName = a:MyArgs[g:CppVariableCmd_Name_ArgIndex]
-	lockvar l:FixedName
 
-	let VariableGenArgList = MakeVariableGenArgs(l:FixedName, l:TypeName, l:Ops, l:InitializerStr, l:Category, l:Comment)
+	"DEBUG {
+		"let l:FixedName = 'TestName'
+		"let l:TypeName = 'TestType'
+		"let l:Ops = 'TesOps'
+		"let l:InitializerStr = 'InitializerStr'
+		"let l:Category = 'Category'
+		"let l:Comment = 'Comment'
+	"DEBUG }
+
+	let VariableGenArgList = MakeVariableGenArgs(l:FixedName, l:TypeName, l:InitializerStr, l:Ops, l:Category, l:Comment)
 	return VariableGenArgList
 :endfunction
 
@@ -1806,8 +1829,6 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		return 0
 	endif
 
-	let l:IsField = GetKey_IntType(l:BaseArgs, 'IsField')
-	let l:LinesAbove = GetKey_ListType(l:BaseArgs, "ExtraPrivateLinesAbove")
 
 	if(IsDebug)
 		echo 'DEBUG: AddClass'
@@ -1820,6 +1841,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	":call EchoBlock(0, l:ExtraLinesAbove, "")
 	"DEBUG }
 	
+	let l:IsField = GetKey_IntType(l:BaseArgs, 'IsField')
 	if(l:IsField && BoolNot(IsFieldContextType(l:ContextType)))
 		let l:IsValidContext = 0
 	elseif(BoolNot(l:IsField) && BoolNot(IsVariableContextType(l:ContextType)))
@@ -1828,9 +1850,12 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		let l:IsValidContext = 1
 	endif
 	
+	if(IsDebug)
+		:call EchoVariableGenArgs(l:UpdatedArgs)
+	endif
+
 	if l:IsValidContext
-		"TODO Pass updated arguments instead!
-		":call AddCode_CppVarOrField(l:IsField, l:Comment, l:Category, l:LinesAbove, l:Ops, l:TypeName, l:FixedName, l:InitializerStr)
+		:call AddCode_CppVarOrField(l:Context, l:BaseArgs, l:UpdatedArgs)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")

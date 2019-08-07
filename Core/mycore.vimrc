@@ -199,6 +199,17 @@ let g:VariableGenArgIndex_CommentTextLines = 5
 	return [a:Name, a:RetType, deepcopy(a:Initializer), a:Ops, a:Category, a:CommentTextLines]
 :endfunction:
 
+:function! EchoVariableGenArgs(Args)
+	let lines = []
+	:call add(lines, 'Name:'.GetVariableName(a:Args))
+	:call add(lines, 'RetType:'.GetVariableRetType(a:Args))
+	:call add(lines, 'Initializer:'.GetVariableInitializer(a:Args))
+	:call add(lines, 'Category:'.GetVariableCategory(a:Args))
+	:call add(lines, 'Ops:'.GetVariableOps(a:Args))
+	:call add(lines, 'Comment:'.GetVariableCommentTextLines(a:Args))
+	:call EchoBlock(0, lines, '')
+:endfunction
+
 :function! GetVariableName(VariableGenList)
 	return a:VariableGenList[g:VariableGenArgIndex_Name]
 :endfunction
