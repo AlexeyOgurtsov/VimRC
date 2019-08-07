@@ -1807,9 +1807,13 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	if(l:ContextType == g:ContextType_Class)
 		if((l:NewOps !~? ';nog;') && (l:NewOps !~? 'noget'))
-			"TODO: Check here: getter should not be added if we
-			"adding variable inside the public access section
-			:call ExecuteCmd_AddCppGetter_ForVariable(a:GenArgs)
+			"WARNING! Ever if we adding variable inside public,
+			"we still need getter,
+			"However, inside struct we by default do NOT add
+			"getters
+			if(BoolNot(GetContextIsStruct(a:Context)) || (l:NewOps =~? ';get;') || (l:NewOps =~? ';g;'))
+				:call ExecuteCmd_AddCppGetter_ForVariable(a:GenArgs)
+			endif
 		endif
 	endif
 :endfunction
