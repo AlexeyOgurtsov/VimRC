@@ -1736,6 +1736,43 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	endif
 :endfunction
 
+:function! GetUpdatedVariableArgs_FromRestOfArgs(Context, BaseArgs, MyArgs, RestArgsString, Options) 
+	let l:Name_ArgIndex = 0
+	let l:RestString_ArgIndex = 1
+
+	let IsDebug = 0
+	let l:Ops = a:Options
+	let l:ContextType = GetContextType(a:Context)
+
+	let MainAndInitializer = SplitFuncArgs_MainAndResult(a:RestArgsString)
+	let l:RestArgs = GetOrDefault(MainAndInitializer, 0, "")
+	let l:InitializerStr = GetInitializer_FromArgs(MainAndInitializer)
+	""Rest of args dictionary:
+	""-Initializer (@)
+	""-Extra ops (;)
+	""-Categry (!)
+	let l:RestArgs_Dict = ExtractDefaultArguments(l:RestArgs, [])
+
+	"Check for return value and arguments validity
+	if (InvalidVarArgs(l:RestArgs_Dict))
+		return 0
+	endif
+
+	let l:TypeName = GetReturnType_FromExtractedDict(l:RestArgs_Dict)
+	let l:Comment = GetComment_FromExtractedDict(l:RestArgs_Dict)
+	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RestArgs_Dict)
+	let l:Category = GetJoinedCategories_FromExtractedDict(l:RestArgs_Dict)
+
+	"Update the global ops with extra ops:
+	let l:Ops .= ';'.l:ExtraOps.';'
+
+	let l:FixedName = a:MyArgs[l:Name_ArgIndex]
+	lockvar l:FixedName
+
+	let VariableGenArgList = MakeVariableGenArgs(l:FixedName, l:TypeName, l:Ops, l:InitializerStr, l:Category, l:Comment)
+	return VariableGenArgList
+:endfunction
+
 "Add C++ variable
 :function! CmdFunc_AddCode_CppVar(...)
 	let IsDebug = 0
@@ -1766,12 +1803,17 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	""-Extra ops (;)
 	""-Categry (!)
 	let l:RestArgs_Dict = ExtractDefaultArguments(l:RestArgs, [])
+	let l:UpdatedArgs = GetUpdatedVariableArgs_FromRestOfArgs(l:Context, l:BaseArgs, l:MyArgs, RestOfArgs, l:Ops) 
+	if(l:UpdatedArgs == [])
+		return 0
+	endif
 
 	"Check for return value and arguments validity
 	if (InvalidVarArgs(l:RestArgs_Dict))
 		return 0
 	endif
 
+	let l:TypeName = GetReturnType_FromExtractedDict(l:RestArgs_Dict)
 	let l:Comment = GetComment_FromExtractedDict(l:RestArgs_Dict)
 	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RestArgs_Dict)
 	let l:Category = GetJoinedCategories_FromExtractedDict(l:RestArgs_Dict)
@@ -1779,18 +1821,17 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	"Update the global ops with extra ops:
 	let l:Ops .= ';'.l:ExtraOps.';'
 
-	if(IsDebug)
-		echo 'DEBUG: AddClass'
-		echo 'Ops: '.l:Ops
-	endif
-
 	let l:FixedName = l:MyArgs[l:Name_ArgIndex]
 	lockvar l:FixedName
 
 	let l:IsField = GetKey_IntType(l:BaseArgs, 'IsField')
 	let l:LinesAbove = GetKey_ListType(l:BaseArgs, "ExtraPrivateLinesAbove")
-	let l:TypeName = GetReturnType_FromExtractedDict(l:RestArgs_Dict)
 
+
+	if(IsDebug)
+		echo 'DEBUG: AddClass'
+		echo 'Ops: '.l:Ops
+	endif
 	"DEBUG {
 	"echo "CmdFunc_AddCode_CppClass: DEBUG: ExtraPrivateLinesAbove: "
 	":call EchoBlock(0, l:ExtraPrivateLinesAbove, "")
@@ -1807,12 +1848,14 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	endif
 	
 	if l:IsValidContext
+		"TODO Pass updated arguments instead!
 		:call AddCode_CppVarOrField(l:IsField, l:Comment, l:Category, l:LinesAbove, l:Ops, l:TypeName, l:FixedName, l:InitializerStr)
 	else
 		"Unsupported context type here
 		:call EchoContext(1, "Unsupported context for command", l:Context, "")
 		return 0
 	endif
+	return 1
 :endfunction
 
 :function! GetLines_EnumClass(BaseArgs, Ops, Context, LinesAbove, LinesBelow, Name)
