@@ -87,9 +87,34 @@
 	return ""
 :endfunction
 
+:function! IsCppPublicAccessLine(Line)
+	return (a:Line =~# '^\s*public:')
+:endfunction
+
+:function! IsCppPrivateAccessLine(Line)
+	return (a:Line =~# '^\s*private:')
+:endfunction
+
+:function! IsCppProtectedAccessLine(Line)
+	return (a:Line =~# '^\s*protected:')
+:endfunction
+
 :function! IsCppAccessSpecLine(Line)
 	"TODO: Skip C++ comments at the end
-	return (a:Line =~# '^\s*public:') || (a:Line =~# '^\s*private:') || (a:Line =~# '^\s*protected:')
+	return IsCppPublicAccessLine(a:Line) || IsCppPrivateAccessLine(a:Line) || IsCppProtectedAccessLine(a:Line)
+:endfunction
+
+"Return access type from the given access spec line
+:function! GetAccessType_FromAccessSpecLine(Line)
+	if(IsCppPublicAccessLine(a:Line))
+		return g:AccessType_Public
+	elseif(IsCppPrivateAccessLine(a:Line))
+		return g:AccessType_Private
+	elseif(IsCppProtectedAccessLine(a:Line))
+		return g:AccessType_Protected
+	else
+		return g:AccessType_Unknown
+	endif
 :endfunction
 
 "Find line index of form "Spec:" in the given lines
@@ -120,6 +145,155 @@
 	return FindAccessSpec_LineIndex(a:Lines, "protected")
 :endfunction
 
+
+"Find the appropriate for insertion Private/Protected/Public section line index 
+"with the given access type 
+"Section may be explicitly or implicitly specified (for example, as public
+"section for struct)
+"returns: found line index in buffer space
+"(or - 1 if there's not section with the given access type)
+:function! FindAccessSection(Context, AccessType, Options)
+	let IsDebug = 0
+
+	let PublicLineIndex = LineIndex_LocToBuf(a:Context, GetContextClass_PublicLine(a:Context))
+	let PrivateLineIndex = LineIndex_LocToBuf(a:Context, GetContextClass_PrivateLine(a:Context))
+	let ProtectedLineIndex = LineIndex_LocToBuf(a:Context, GetContextClass_ProtectedLine(a:Context))
+
+	let IsStruct = GetContextIsStruct(a:Context)
+	let OpenBraceLineIndex = GetContextOpenBraceLine(a:Context)
+
+	if(IsDebug)
+		let debug_lines = []
+		:call add(debug_lines, 'AccessType: '.GetAccessTypeString(a:AccessType))
+		:call add(debug_lines, 'IsStruct: '.IsStruct)
+		:call add(debug_lines, 'HeaderLineIndex: '.GetContextHeaderLineIndex(a:Context))
+		:call add(debug_lines, 'OpenBraceLineIndex: '.OpenBraceLineIndex)
+		:call add(debug_lines, 'PublicLineIndex: '.PublicLineIndex)
+		:call add(debug_lines, 'PrivateLineIndex: '.PrivateLineIndex)
+		:call add(debug_lines, 'ProtectedLineIndex: '.ProtectedLineIndex)
+		:call EchoBlock(0, debug_lines, "")
+	endif
+
+	if(a:AccessType == g:AccessType_Protected)
+		return ProtectedLineIndex
+
+	elseif(a:AccessType == g:AccessType_Public)
+		if(IsStruct)
+			return OpenBraceLineIndex
+		else
+			return PublicLineIndex
+		endif
+
+	elseif(a:AccessType == g:AccessType_Private)
+		if(PrivateLineIndex >= 0)
+			return PrivateLineIndex
+		endif
+
+		"Here private line is not specified and we have class, so use
+		"the default namespace
+		if(BoolNot(IsStruct))
+			return OpenBraceLineIndex
+		endif
+	endif
+
+	return -1
+:endfunction
+
+"Find next line of section (no matter, whether it's a next section or out of
+"scope of the given class)
+:function! FindSectionNextLine(Context, StartLine, Options)
+	let IsDebug = 0
+
+	"Index of line of end of class ('}' line)
+	let ClassEndLineIndex = (GetContextEndLine(a:Context) + 1)
+
+	let IsFound = 0 "Is end of section found
+	let LineIndex = (1 + a:StartLine) "line index in the current space
+	while(BoolNot(IsFound) && (LineIndex < ClassEndLineIndex))
+		if(IsCppAccessSpecLine(getline(LineIndex)))
+			let IsFound = 1
+			break
+		endif
+		let LineIndex += 1
+	endwhile
+
+	if (IsDebug)
+		echo "DEBUG: FindexSectionNextLine"
+		echo "StartLine=".a:StartLine
+		echo "ClassEndLineIndex=".ClassEndLineIndex
+		echo "LineIndex=".LineIndex
+		echo "IsFound=".IsFound
+	endif
+
+	return LineIndex
+:endfunction
+"Searches for the last line of the given section
+:function! FindSectionLastLine(Context, StartLine, Options)
+	return (FindSectionNextLine(a:Context, a:StartLine, a:Options) - 1)
+:endfunction
+
+:function! SkipEmptyLinesUp(LineIndex, MaxCountEmptyLinesToKeep)
+	let i = a:LineIndex
+	let CountEmptyLinesFound = 0
+	while(i >= 1 && IsEmptyOrSpaced(getline(i)))
+		let i -= 1
+		let CountEmptyLinesFound += 1
+	endwhile
+	if(CountEmptyLinesFound >= a:MaxCountEmptyLinesToKeep)
+		let i += a:MaxCountEmptyLinesToKeep
+	endif
+	return i
+:endfunction
+
+"Returns best insert position for the given section
+"StartLine - start line index in buffer space
+"Returns: best insert position for the given section
+:function! FindSectionInsertPosition(Context, StartLine, Options)
+	let l:ResultLine = a:StartLine
+	let l:SectionLastLine = FindSectionLastLine(a:Context, a:StartLine, a:Options)
+	if(l:SectionLastLine >= 0)
+		let l:InsertPosition = SkipEmptyLinesUp(l:SectionLastLine, 1)
+		let l:ResultLine = l:InsertPosition
+	endif
+	return l:ResultLine
+:endfunction
+
+:function! GetClassHeaderAccessType(Context)
+	let IsStruct = GetContextIsStruct(a:Context)
+	if IsStruct
+		let AccessType = g:AccessType_Public
+	else
+		let AccessType = g:AccessType_Private
+	endif
+	return AccessType
+:endfunction
+
+"Returns: Access spec code at the GIVEN line in line-inside-body coord space
+:function! GetAccessTypeAt_ContextAndLocalLine(Context, TargetLocalLineIndex, HeaderLine, LinesInsideBody, Options)
+	let AccessType = GetClassHeaderAccessType(a:Context)
+	let InsideBody_LineIndex = 0
+	while(InsideBody_LineIndex <= a:TargetLocalLineIndex)
+		let Line = a:LinesInsideBody[InsideBody_LineIndex]
+		
+		if(IsCppAccessSpecLine(Line))
+			let AccessType = GetAccessType_FromAccessSpecLine(Line)
+		endif
+
+		let InsideBody_LineIndex += 1
+	endwhile
+	return AccessType
+:endfunction
+
+:function! GetAccessTypeAt_ContextAndGlobalLine(Context, TargetGlobalLineIndex, HeaderLine, LinesInsideBody, Options)
+	let TargetLocalLineIndex = a:TargetGlobalLineIndex - (GetContextOpenBraceLine(a:Context) + 1)
+	return GetAccessTypeAt_ContextAndLocalLine(a:Context, TargetLocalLineIndex, a:HeaderLine, a:LinesInsideBody, a:Options)
+:endfunction
+
+"Get access type at current line of context
+:function! GetAccessTypeAt_Context(Context, HeaderLine, LinesInsideBody, Options)
+	return GetAccessTypeAt_ContextAndGlobalLine(a:Context, GetContextLine(a:Context), a:HeaderLine, a:LinesInsideBody, a:Options)
+:endfunction
+
 :function! ComputeCppClassContext(OutContext, HeaderLine, LinesInsideBody, Options)
 	let IsDebugEcho = 0
 
@@ -134,6 +308,10 @@
 	let a:OutContext[g:Context_ClassPublicLineIndex] = FindPublic_LineIndex(a:LinesInsideBody)
 	let a:OutContext[g:Context_ClassPrivateLineIndex] = FindPrivate_LineIndex(a:LinesInsideBody)
 	let a:OutContext[g:Context_ClassProtectedLineIndex] = FindProtected_LineIndex(a:LinesInsideBody)
+
+	"Compute current access type
+	"WARNING! To be computet AFTER public line index etc. are computed
+	let a:OutContext[g:Context_ClassAccessType] = GetAccessTypeAt_Context(a:OutContext, a:HeaderLine, a:LinesInsideBody, a:Options)
 
 	if IsDebugEcho
 		echo "DEBUG: ComputeCppClassContext: "
@@ -473,118 +651,6 @@
 	:call extend(l:res, GetCoreExactContextAt(a:LineIndex, a:Options))
 	let l:ContextType = ExtractCppContextLines(l:res)
 	return l:res
-:endfunction
-
-"Find the appropriate for insertion Private/Protected/Public section line index 
-"with the given access type 
-"Section may be explicitly or implicitly specified (for example, as public
-"section for struct)
-"returns: found line index in buffer space
-"(or - 1 if there's not section with the given access type)
-:function! FindAccessSection(Context, AccessType, Options)
-	let IsDebug = 0
-
-	let PublicLineIndex = LineIndex_LocToBuf(a:Context, GetContextClass_PublicLine(a:Context))
-	let PrivateLineIndex = LineIndex_LocToBuf(a:Context, GetContextClass_PrivateLine(a:Context))
-	let ProtectedLineIndex = LineIndex_LocToBuf(a:Context, GetContextClass_ProtectedLine(a:Context))
-
-	let IsStruct = GetContextIsStruct(a:Context)
-	let OpenBraceLineIndex = GetContextOpenBraceLine(a:Context)
-
-	if(IsDebug)
-		let debug_lines = []
-		:call add(debug_lines, 'AccessType: '.GetAccessTypeString(a:AccessType))
-		:call add(debug_lines, 'IsStruct: '.IsStruct)
-		:call add(debug_lines, 'HeaderLineIndex: '.GetContextHeaderLineIndex(a:Context))
-		:call add(debug_lines, 'OpenBraceLineIndex: '.OpenBraceLineIndex)
-		:call add(debug_lines, 'PublicLineIndex: '.PublicLineIndex)
-		:call add(debug_lines, 'PrivateLineIndex: '.PrivateLineIndex)
-		:call add(debug_lines, 'ProtectedLineIndex: '.ProtectedLineIndex)
-		:call EchoBlock(0, debug_lines, "")
-	endif
-
-	if(a:AccessType == g:AccessType_Protected)
-		return ProtectedLineIndex
-
-	elseif(a:AccessType == g:AccessType_Public)
-		if(IsStruct)
-			return OpenBraceLineIndex
-		else
-			return PublicLineIndex
-		endif
-
-	elseif(a:AccessType == g:AccessType_Private)
-		if(PrivateLineIndex >= 0)
-			return PrivateLineIndex
-		endif
-
-		"Here private line is not specified and we have class, so use
-		"the default namespace
-		if(BoolNot(IsStruct))
-			return OpenBraceLineIndex
-		endif
-	endif
-
-	return -1
-:endfunction
-
-"Find next line of section (no matter, whether it's a next section or out of
-"scope of the given class)
-:function! FindSectionNextLine(Context, StartLine, Options)
-	let IsDebug = 0
-
-	"Index of line of end of class ('}' line)
-	let ClassEndLineIndex = (GetContextEndLine(a:Context) + 1)
-
-	let IsFound = 0 "Is end of section found
-	let LineIndex = (1 + a:StartLine) "line index in the current space
-	while(BoolNot(IsFound) && (LineIndex < ClassEndLineIndex))
-		if(IsCppAccessSpecLine(getline(LineIndex)))
-			let IsFound = 1
-			break
-		endif
-		let LineIndex += 1
-	endwhile
-
-	if (IsDebug)
-		echo "DEBUG: FindexSectionNextLine"
-		echo "StartLine=".a:StartLine
-		echo "ClassEndLineIndex=".ClassEndLineIndex
-		echo "LineIndex=".LineIndex
-		echo "IsFound=".IsFound
-	endif
-
-	return LineIndex
-:endfunction
-"Searches for the last line of the given section
-:function! FindSectionLastLine(Context, StartLine, Options)
-	return (FindSectionNextLine(a:Context, a:StartLine, a:Options) - 1)
-:endfunction
-
-:function! SkipEmptyLinesUp(LineIndex, MaxCountEmptyLinesToKeep)
-	let i = a:LineIndex
-	let CountEmptyLinesFound = 0
-	while(i >= 1 && IsEmptyOrSpaced(getline(i)))
-		let i -= 1
-		let CountEmptyLinesFound += 1
-	endwhile
-	if(CountEmptyLinesFound >= a:MaxCountEmptyLinesToKeep)
-		let i += a:MaxCountEmptyLinesToKeep
-	endif
-	return i
-:endfunction
-
-"Returns best insert position for the given section
-"StartLine - start line index in buffer space
-"Returns: best insert position for the given section
-:function! FindSectionInsertPosition(Context, StartLine, Options)
-	let l:ResultLine = a:StartLine
-	let l:SectionLastLine = FindSectionLastLine(a:Context, a:StartLine, a:Options)
-	if(l:SectionLastLine >= 0)
-		let l:InsertPosition = SkipEmptyLinesUp(l:SectionLastLine, 1)
-		let l:ResultLine = l:InsertPosition
-	endif
-	return l:ResultLine
 :endfunction
 
 "Overriding getting context line from options for cpp
@@ -2349,6 +2415,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:ContextType = GetContextType(a:Context)
 
 	let l:NewArgs = deepcopy(a:FuncArgs)
+
 
 	"Update options based on context
 	let l:Name = GetFuncName(a:FuncArgs)
