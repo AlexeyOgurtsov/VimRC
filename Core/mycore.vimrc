@@ -34,6 +34,28 @@
 	:endif
 :endfunction
 
+:function! IsUpperCharAt(S, Index)
+	if(a:Index >= len(a:S))
+	       	return 0
+	endif
+	let CharStr = strpart(a:S, a:Index, 1)
+	if(toupper(CharStr) == CharStr)
+		return 1
+	endif
+	return 0
+:endfunction
+
+:function! IsLowerCharAt(S, Index)
+	if(a:Index >= len(a:S))
+	       	return 0
+	endif
+	let CharStr = strpart(a:S, a:Index, 1)
+	if(tolower(CharStr) == CharStr)
+		return 1
+	endif
+	return 0
+:endfunction
+
 "Returns: Count of lines that satisfy the given pattern
 :function! CountLinesByPattern(Lines, Pattern)
 	let l:count = 0

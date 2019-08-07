@@ -2233,6 +2233,36 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return GetFixedName(a:MemberName)
 :endfunction
 
+:function! GetKnownVarPrefix(VarName)
+	"WARNING! The longer prefixes must be placed before the shorter in the
+	"prefix list!
+	let PrefixList = ['pb', 'b', 'p']
+	let PrefixFound = 0
+	:for RefPref in PrefixList
+		if(stridx(a:VarName, RefPref) == 0)
+			"We found the prefix
+			let PrefixFound = 1
+			break
+		endif
+	:endfor
+	if(PrefixFound)
+		let PrefixLen = len(RefPref)
+		if(len(a:VarName) > PrefixLen)
+			let UpperLetterAfterPrefix = IsUpperCharAt(a:VarName, len(RefPref))
+			if(UpperLetterAfterPrefix)
+				return RefPref
+			endif
+		endif
+	endif
+	return ''
+:endfunction
+
+:function! SplitVarName_KnownPrefixAndName(VarName)
+	let Prefix = GetKnownVarPrefix(a:VarName)
+	let Name = strpart(a:VarName, len(Prefix))
+	return [ Prefix, Name ]
+:endfunction
+
 :function! GetUpdatedCppFunctionArgs_Getter(Context, MemberName, FuncArgs)
 	let l:IsDebug = 0
 	if l:IsDebug
@@ -2248,12 +2278,29 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		return []
 	endif
 
-	let l:FixedMemberName = GetFixedName_MemberInContext(a:Context, a:MemberName, GetFuncOps(l:NewArgs))
-	let l:NewGetterName = 'Get'.l:FixedMemberName
+	let l:List_PrefixAndName = SplitVarName_KnownPrefixAndName(a:MemberName)
+	let l:NamePrefix = l:List_PrefixAndName[0]
+	let l:CommonName = l:List_PrefixAndName[1]
+	"We only fix member name if it has no prefix (otherwise it's already
+	"fixed)
+	if(len(NamePrefix) == 0)
+		let l:FixedMemberName = GetFixedName_MemberInContext(a:Context, a:MemberName, GetFuncOps(l:NewArgs))
+	else
+		let l:FixedMemberName = a:MemberName
+	:endif
+
+	if(l:NamePrefix == 'b')
+		let l:NewGetterName = 'Is'.l:CommonName
+	else
+		let l:NewGetterName = 'Get'.l:CommonName
+	endif
 
 	:call SetFuncName(l:NewArgs, l:NewGetterName)
 	:call AddFuncOps(l:NewArgs, ';const;') "Getters are always constant
 	:call AddFuncOps(l:NewArgs, ';inline;') "Getters are inline by default
+
+	"Getters are to be provided for public access by default
+	:call AddFuncOps(l:NewArgs, ';+;')
 
 	"Checking return type
 	let l:OldRetType = GetFuncRetType(l:NewArgs)

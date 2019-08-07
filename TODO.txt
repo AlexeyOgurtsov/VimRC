@@ -48,11 +48,11 @@ Variable commands
 
 Variable commands - name handling:
 1. When bool add b automatically
-2. When poitner add p (optionally)
+2. When pointer add p (optionally)
 
 Variable commands - getters:
-1. Special name handling for bool variables
-2. Pointer name handling
+1. Special name handling for bool variables (+DONE)
+2. Pointer name handling (+DONE)
 
 Property
 1. Commands
