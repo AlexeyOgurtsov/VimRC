@@ -286,6 +286,10 @@
 	endif
 :endfunction
 
+:function! CmdFunc_AddCode_UProp(...)
+	"TODO
+:endfunction
+
 :function! GetUEnumClass_LinesAbove(IsFlags, OpsList, Name, Category)
 	let l:Lines = []
 	let l:Specs = "BlueprintType" "TODO
@@ -638,7 +642,8 @@
 "Add Unreal Property (with UPROPERTY or without, according to flags)
 "Arguments:
 "OptionString Category Type Name [InitExpr]
-:command! -nargs=* UPr :call CmdFunc_AddCode_UVarOrProp(0, <f-args>)
+":command! -nargs=* UPr :call CmdFunc_AddCode_UVarOrProp(0, <f-args>)
+:command! -nargs=* UPr :call CmdFunc_AddCode_UProp({'IsField':1, 'LinesAbove':[]}, <f-args>)
 
 "Add Unreal function (with UFUNCTION)
 "Format:

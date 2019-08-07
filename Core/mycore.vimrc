@@ -188,6 +188,66 @@
 	return JoinRestList(a:L, ' ', a:StartIndex)
 :endfunction
 
+let g:VariableGenArgIndex_Name = 0
+let g:VariableGenArgIndex_RetType = 1
+let g:VariableGenArgIndex_Initializer = 2
+let g:VariableGenArgIndex_Ops = 3
+let g:VariableGenArgIndex_Category = 4
+let g:VariableGenArgIndex_CommentTextLines = 5
+
+:function! MakeVariableGenArgs(Name, RetType, Initializer, Ops, Category, CommentTextLines)
+	return [a:Name, a:RetType, deepcopy(a:Initializer), a:Ops, a:Category, a:CommentTextLines]
+:endfunction:
+
+:function! GetVariableName(VariableGenList)
+	return a:VariableGenList[g:VariableGenArgIndex_Name]
+:endfunction
+
+:function! SetVariableName(VariableGenList, NewValue)
+	let a:VariableGenList[g:VariableGenArgIndex_Name] = a:NewValue 
+:endfunction
+
+:function! GetVariableRetType(VariableGenList)
+	return a:VariableGenList[g:VariableGenArgIndex_RetType]
+:endfunction
+
+:function! SetVariableRetType(VariableGenList, NewValue)
+	let a:VariableGenList[g:VariableGenArgIndex_RetType] = a:NewValue
+:endfunction
+
+:function! GetVariableOps(VariableGenList)
+	return a:VariableGenList[g:VariableGenArgIndex_Ops]
+:endfunction
+
+:function! AddVariableOps(VariableGenList, NewOps)
+	let a:VariableGenList[g:VariableGenArgIndex_Ops] .= ';' . a:NewOps
+:endfunction
+
+:function! GetVariableInitializer(VariableGenList)
+	return a:VariableGenList[g:VariableGenArgIndex_Initializer]
+:endfunction
+
+:function! SetVariableInitializer(VariableGenList, NewValue)
+	let a:VariableGenList[g:VariableGenArgIndex_Initializer] = deepcopy(a:NewValue)
+:endfunction
+
+:function! GetVariableCategory(VariableGenList)
+	return a:VariableGenList[g:VariableGenArgIndex_Category]
+:endfunction
+
+:function! SetVariableCategory(VariableGenList, NewValue)
+	let a:VariableGenList[g:VariableArgIndex_Category] = a:NewValue
+:endfunction
+
+:function! GetVariableCommentTextLines(VariableGenList)
+	return a:VariableGenList[g:VariableGenArgIndex_CommentTextLines]
+:endfunction
+
+:function! SetVariableCommentTextLines(VariableGenList, NewValue)
+	let a:VariableGenList[g:VariableArgIndex_CommentTextLines] = deepcopy(a:NewValue)
+:endfunction
+
+
 let g:FuncGenArgIndex_Name = 0
 let g:FuncGenArgIndex_ArgString = 1
 let g:FuncGenArgIndex_RetType = 2

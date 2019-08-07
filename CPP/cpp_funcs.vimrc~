@@ -1694,7 +1694,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 "Adds properly indented cpp variable of field text at current line
 "(warning! Adds ONLY variable text, NO getters or setters etc.)
 "Arguments: see the corresponding CmdFunc
-:function! AddCode_CppVarOrField(IsField, Category, LinesAbove, OptionString, TypeName, Name, InitExpr)
+:function! AddCode_CppVarOrField(IsField, Comment, Category, LinesAbove, OptionString, TypeName, Name, InitExpr)
 	"Reserved for impl, for example initializers for static variables"
 	let l:variable_cpp_lines = []
 	"Variable declaration itself
@@ -1706,48 +1706,112 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let l:InsertionStartLine = AddCodeAt(Context, l:variable_lines, l:variable_cpp_lines, l:NewOps)
 
 	"TODO: Add getter
-
-	"Hack: change cursor position
-	":call JumpAfterAt(GetContextLine(Context), l:variable_lines)
 :endfunction
 
-" Adds variable or field 
-" (See command)
-" Arguments:
-" 1. IsField (1 - field)
-" Fields are added to classes always (ever if we're currently inside function)
-" 2. LinesAbove (List of strings)
-" May include here UPROPERTY(), for example
-" 3. OptionString  (string)
-" Of form "Opt1;Opt2;" (string)
-" 4. TypeName (String)
-" 5. Name (String)
-" 6. Initializer expression (optional, String)
-:function! CmdFunc_AddCode_CppVarOrField(...)
-	let args = a:000
-	let n = len(args) - 3
+:function! IsFieldContextType(ContextType)
+	if(a:ContextType == g:ContextType_Class)
+		return 1
+	endif 	
+	return 0
+:endfunction
 
-	:call assert_true(len(args) >= g:AddCode_CppVarOrField_InitExpr_ArgIndex, "Argument count wrong for Cpp Var or Field addition function")
+:function! IsVariableContextType(ContextType)
+	if(a:ContextType == g:ContextType_Enum)
+		return 0
+	endif 	
+	return 1
+:endfunction
 
-	let IsField = a:000[g:AddCode_CppVarOrField_IsField_ArgIndex]
-	let LinesAbove = a:000[g:AddCode_CppVarOrField_LinesAbove_ArgIndex]
-	let OptionString = a:000[g:AddCode_CppVarOrField_OptionString_ArgIndex]
-	let Category = '' "TODO
+:function! InvalidVarArgs(ArgsDict)
+	"TODO: Check that return type is explicitly set
+	return InvalidFunctionArgs(a:ArgsDict)
+:endfunction
 
-	if n < 2
-		echoerr "OptionString, TypeName and Name must be specified"
-		return
+:function! GetInitializer_FromArgs(MainAndInitializer)
+	let l:InitializerLines = GetFuncBodyLines_FromMainAndBodyList(a:MainAndInitializer)
+	if(len(l:InitializerLines) > 0)
+		return l:InitializerLines[0]
 	else
-		let TypeName = args[g:AddCode_CppVarOrField_TypeName_ArgIndex]
-		let Name = args[g:AddCode_CppVarOrField_Name_ArgIndex]
+		return ''
+	endif
+:endfunction
 
-		if n >= 3
-			let InitializerExpression = args[g:AddCode_CppVarOrField_InitExpr_ArgIndex]
-		else
-			let InitializerExpression = "" "TODO: Should we choose default initializer
-		endif
+"Add C++ variable
+:function! CmdFunc_AddCode_CppVar(...)
+	let IsDebug = 0
 
-		:call AddCode_CppVarOrField(IsField, Category, LinesAbove, OptionString, TypeName, Name, InitializerExpression)
+	let l:Context = {}
+	let l:BaseArgs = {}
+	let l:OpsList = []
+	let l:MyArgs = [] "Custom args of this command
+	if ExtractCmdArgs_TrueOnFail("", a:000, l:Context, l:BaseArgs, l:OpsList, l:MyArgs)
+		return 0
+	endif
+	let l:Ops = l:OpsList[0]
+	let l:ContextType = GetContextType(l:Context)
+
+	let l:Name_ArgIndex = 0
+	let l:RestString_ArgIndex = 1
+	"Checking custom args
+	if NoArg(1, l:MyArgs, "Name", l:Name_ArgIndex)
+		return 0
+	endif
+
+	let RestOfArgs = ListRestAsString(l:MyArgs, l:RestString_ArgIndex)
+	let MainAndInitializer = SplitFuncArgs_MainAndResult(RestOfArgs)
+	let l:RestArgs = GetOrDefault(MainAndInitializer, 0, "")
+	let l:InitializerStr = GetInitializer_FromArgs(MainAndInitializer)
+	""Rest of args dictionary:
+	""-Initializer (@)
+	""-Extra ops (;)
+	""-Categry (!)
+	let l:RestArgs_Dict = ExtractDefaultArguments(l:RestArgs, [])
+
+	"Check for return value and arguments validity
+	if (InvalidVarArgs(l:RestArgs_Dict))
+		return 0
+	endif
+
+	let l:Comment = GetComment_FromExtractedDict(l:RestArgs_Dict)
+	let l:ExtraOps = GetJoinedOps_FromExtractedDict(l:RestArgs_Dict)
+	let l:Category = GetJoinedCategories_FromExtractedDict(l:RestArgs_Dict)
+
+	"Update the global ops with extra ops:
+	let l:Ops .= ';'.l:ExtraOps.';'
+
+	if(IsDebug)
+		echo 'DEBUG: AddClass'
+		echo 'Ops: '.l:Ops
+	endif
+
+	let l:FixedName = l:MyArgs[l:Name_ArgIndex]
+	lockvar l:FixedName
+
+	let l:IsField = GetKey_IntType(l:BaseArgs, 'IsField')
+	let l:LinesAbove = GetKey_ListType(l:BaseArgs, "ExtraPrivateLinesAbove")
+	let l:TypeName = GetReturnType_FromExtractedDict(l:RestArgs_Dict)
+
+	"DEBUG {
+	"echo "CmdFunc_AddCode_CppClass: DEBUG: ExtraPrivateLinesAbove: "
+	":call EchoBlock(0, l:ExtraPrivateLinesAbove, "")
+	"echo "CmdFunc_AddCode_CppClass: DEBUG: ClassLinesAbove: "
+	":call EchoBlock(0, l:ExtraLinesAbove, "")
+	"DEBUG }
+	
+	if(l:IsField && BoolNot(IsFieldContextType(l:ContextType)))
+		let l:IsValidContext = 0
+	elseif(BoolNot(l:IsField) && BoolNot(IsVariableContextType(l:ContextType)))
+		let l:IsValidContext = 0
+	else
+		let l:IsValidContext = 1
+	endif
+	
+	if l:IsValidContext
+		:call AddCode_CppVarOrField(l:IsField, l:Comment, l:Category, l:LinesAbove, l:Ops, l:TypeName, l:FixedName, l:InitializerStr)
+	else
+		"Unsupported context type here
+		:call EchoContext(1, "Unsupported context for command", l:Context, "")
+		return 0
 	endif
 :endfunction
 
@@ -2298,7 +2362,12 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 "Adds Cpp variable at current position of the document
 "(inside function, or inside class)
 "Args: OptionString Type Name [InitExpr]
-:command! -nargs=* Va :call CmdFunc_AddCode_CppVarOrField(0, [], <f-args>)
+":command! -nargs=* Va :call CmdFunc_AddCode_CppVarOrField(0, [], <f-args>)
+
+"Args1: Ops Name [:type] [@initializer]
+"Example calls:
+"	:Va ; x :int @0 !category
+:command! -nargs=* Va :call CmdFunc_AddCode_CppVar({'IsField':0, 'LinesAbove':[]}, <f-args>)
 
 "Args: Ops Name [ArgsAndRetVal]
 "ArgsAndRetval has the following format:
