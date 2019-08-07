@@ -499,13 +499,14 @@
 	"Are we using blueprint?
 	let l:UseBP = (a:Ops !~? ";NoBP;")
 	"Is constant function?
-	let l:IsConst = (a:Ops =~? ";C;") || (a:Ops =~? ";Const;") || (a:Ops =~? ";Get;")
+	let l:IsConst = (a:Ops =~? ";C;") || (a:Ops =~? ";Const;") 
+	let l:IsGetter = (a:Name =~? '^\.' ) || (a:Ops =~? ";Get;")
 
 	if(l:UseBP)
 		let l:IsBPNativeOption = IsBPNativeOp(a:Ops)
 		let l:IsBPNative = IsReallyBPNative(l:ClassName, a:Ops)
 		let BPFuncSpec = ""
-		if(l:IsConst)
+		if(l:IsConst || l:IsGetter)
 			let BPFuncSpec = "BlueprintPure"
 		else
 			let BPFuncSpec = "BlueprintCallable"

@@ -1876,6 +1876,8 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 "Arguments: see the corresponding command for arguments
 :function! CmdFunc_AddCode_CppClass(...)
+	let IsDebug = 0
+
 	let l:Context = {}
 	let l:BaseArgs = {}
 	let l:OpsList = []
@@ -1902,6 +1904,11 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	"Update the global ops with extra ops:
 	let l:Ops .= ';'.l:ExtraOps.';'
+
+	if(IsDebug)
+		echo 'DEBUG: AddClass'
+		echo 'Ops: '.l:Ops
+	endif
 
 	"Is templated class"
 	let l:IsTempl = GetKey_IntType(l:BaseArgs, "IsTempl")
