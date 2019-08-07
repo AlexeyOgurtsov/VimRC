@@ -1679,15 +1679,23 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return GetCppVarDecl(a:OptionString, a:TypeName, a:Name, a:InitExpr)
 :endfunction
 
-:function! GetLines_CppVarOrField(OutCppLines, IsField, LinesAbove, OptionString, TypeName, Name, InitExpr)
+:function! GetLines_CppVarOrField(OutCppLines, Context, BaseArgs, GenArgs)
+	let l:IsField = a:BaseArgs[0]['IsField']
+	let l:LinesAbove = a:BaseArgs[0]['LinesAbove']
+	let l:Ops = GetVariableOps(a:GenArgs)
+
+	let l:Name = GetVariableName(a:GenArgs)
+	let l:TypeName = GetVariableRetType(a:GenArgs)
+	let l:InitExpr = GetVariableInitializer(a:GenArgs)
+
 	let l:lines = []
 	"add comment
-	let l:CommentLines = GetLines_GetVarOrFieldComment_IfShould(a:IsField, a:TypeName, a:Name, a:InitExpr, a:OptionString)
+	let l:CommentLines = GetLines_GetVarOrFieldComment_IfShould(a:IsField, a:TypeName, a:Name, a:InitExpr, l:Ops)
 	:call extend(l:lines, l:CommentLines)
 	"Adding lines above
 	:call extend(l:lines, a:LinesAbove)
 	"Add the main line
-	:call add(l:lines, GetCppVar_MainLine(a:IsField, a:OptionString, a:TypeName, a:Name, a:InitExpr).";")
+	:call add(l:lines, GetCppVar_MainLine(a:IsField, l:Ops, l:TypeName, l:Name, l:InitExpr).";")
 	return l:lines
 :endfunction
 
@@ -1698,7 +1706,8 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	"Reserved for impl, for example initializers for static variables"
 	let l:variable_cpp_lines = []
 	"Variable declaration itself
-	let l:variable_lines = GetLines_CppVarOrField(l:variable_cpp_lines, a:IsField, a:LinesAbove, a:OptionString, a:TypeName, a:Name, a:InitExpr)
+	"TODO
+	"let l:variable_lines = GetLines_CppVarOrField(l:variable_cpp_lines, a:IsField, a:LinesAbove, a:OptionString, a:TypeName, a:Name, a:InitExpr)
 
 	"Add code
 	let l:NewOps = a:OptionString.";PrepLineAfter;"

@@ -1,6 +1,5 @@
 TODO Today
-Enum generation
-Enum literal generation
+
 
 1. Context calculation
 1.1. Calculates context near the given line
@@ -26,7 +25,7 @@ Pass context dictionary
 1. Into commands
 
 Function
-1. Static support
+1. Static support (+DONE)
 
 UStruct/UClass commands
 1. Add F for ustruct, capitalize first letter (+DONE)
@@ -46,6 +45,14 @@ Variable commands
 3.1. Ptr to UClass
 3.2. Ptr to UObject
 3.3. Ptr to AActor
+
+Variable commands - name handling:
+1. When bool add b automatically
+2. When poitner add p (optionally)
+
+Variable commands - getters:
+1. Special name handling for bool variables
+2. Pointer name handling
 
 Property
 1. Commands
