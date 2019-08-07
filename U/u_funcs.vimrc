@@ -652,7 +652,20 @@
 	let l:Name = l:MyArgs[l:NameArgIndex]
 	let l:Category = StringOrDefaultIfEmpty(GetJoinedCategories_FromExtractedDict(l:RetValAndArgs_Dict), "Misc")
 
-	:let l:LinesAbove = GetUFunction_LinesAbove(l:Context, l:Category, l:Name, l:RetType, l:FunctionArgs, l:Ops)
+	"Should we use U-function or a simple function?
+	if(l:ContextType == g:ContextType_Class)
+		let IsStruct = GetContextIsStruct(l:Context)
+		let IsUFunc = BoolNot(IsStruct) "We cannot use UFunc inside struct context
+	elseif((l:ContextType == g:ContextType_Global) || (l:ContextType == g:ContextType_Unknown))
+		let IsUFunc = 0
+	else
+		let IsUFunc = 1
+	endif
+	if(IsUFunc)
+		:let l:LinesAbove = GetUFunction_LinesAbove(l:Context, l:Category, l:Name, l:RetType, l:FunctionArgs, l:Ops)
+	else
+		:let l:LinesAbove = []
+	endif
 
 	"Update ops
 	let l:BpNative = IsReallyBPNative(l:ClassName, l:Ops)
