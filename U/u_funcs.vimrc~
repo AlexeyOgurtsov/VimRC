@@ -597,6 +597,12 @@
 	return 0
 :endfunction
 
+"Call most decent 'Add function' command with the given args
+"WARNING!!! Override in the derived class!
+:function! ExecuteCmd_AddCppFunction(FuncName, MainArgDict, BodyString)
+	:execute(':UF '.MakeCommandArgs_FunctionStyle(a:FuncName, a:MainArgDict, a:BodyString))
+:endfunction
+
 :function! CmdFunc_AddCode_UFunction(...)
 	let l:EntityType = g:ContextType_Function
 
