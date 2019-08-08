@@ -2330,27 +2330,6 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return GetFixedName(a:MemberName)
 :endfunction
 
-:function! GetGivenPrefix(VarName, PrefixList)
-	let PrefixFound = 0
-	:for RefPref in a:PrefixList
-		if(stridx(a:VarName, RefPref) == 0)
-			"We found the prefix
-			let PrefixFound = 1
-			break
-		endif
-	:endfor
-	if(PrefixFound)
-		let PrefixLen = len(RefPref)
-		if(len(a:VarName) > PrefixLen)
-			let UpperLetterAfterPrefix = IsUpperCharAt(a:VarName, len(RefPref))
-			if(UpperLetterAfterPrefix)
-				return RefPref
-			endif
-		endif
-	endif
-	return ''
-:endfunction
-
 :function! GetKnownVarPrefix(VarName)
 	"WARNING! The longer prefixes must be placed before the shorter in the
 	"prefix list!
@@ -2363,21 +2342,6 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let Name = strpart(a:VarName, len(Prefix))
 	return [ Prefix, Name ]
 :endfunction
-
-"Returns the prefix that the given string starts with,
-"or returns empty if does not start with any
-:function! StartsWithAny(S, Prefixes)
-	let i = 0
-	while (i < len(a:Prefixes))
-		let CurrPrefix = a:Prefixes[i]
-		if(a:S =~# ('^'.CurrPrefix))
-			return CurrPrefix
-		endif
-		let i += 1
-	endwhile
-	return ''
-:endfunction
-
 :function! GetBoolFunctionPrefixes()
 	let PrefixList = ['Is', 'Has', 'Was']
 	return PrefixList
@@ -2508,6 +2472,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		"echo 'DEBUG: GetUpdatedCppFunctionArgs: HasBoolFuncionPrefix'
 		"Function starts with bool prefix (Is, Was, etc.)
 		:call SetFuncRetType(l:NewArgs, 'bool')
+		:call AddFuncOps(l:NewArgs, ';const;')
 	endif
 
 	let l:NewArgs = CmdFunc_Module_GetUpdatedCppFunctionArgs(a:Context, l:NewArgs)

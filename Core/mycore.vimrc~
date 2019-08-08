@@ -34,6 +34,42 @@
 	:endif
 :endfunction
 
+
+:function! GetGivenPrefix(VarName, PrefixList)
+	let PrefixFound = 0
+	:for RefPref in a:PrefixList
+		if(stridx(a:VarName, RefPref) == 0)
+			"We found the prefix
+			let PrefixFound = 1
+			break
+		endif
+	:endfor
+	if(PrefixFound)
+		let PrefixLen = len(RefPref)
+		if(len(a:VarName) > PrefixLen)
+			let UpperLetterAfterPrefix = IsUpperCharAt(a:VarName, len(RefPref))
+			if(UpperLetterAfterPrefix)
+				return RefPref
+			endif
+		endif
+	endif
+	return ''
+:endfunction
+
+"Returns the prefix that the given string starts with,
+"or returns empty if does not start with any
+:function! StartsWithAny(S, Prefixes)
+	let i = 0
+	while (i < len(a:Prefixes))
+		let CurrPrefix = a:Prefixes[i]
+		if(a:S =~# ('^'.CurrPrefix))
+			return CurrPrefix
+		endif
+		let i += 1
+	endwhile
+	return ''
+:endfunction
+
 :function! IsUpperCharAt(S, Index)
 	if(a:Index >= len(a:S))
 	       	return 0
