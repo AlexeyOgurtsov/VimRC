@@ -2470,13 +2470,54 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return l:NewArgs
 :endfunction
 
+:function! MakeAllLines_WithSemicolon(Lines)
+	let i = 0
+	while i < len(a:Lines)
+		let a:Lines[i] = CppGetWithSemicolon(a:Lines[i])
+		let i += 1
+	endwhile
+:endfunction
+
+"Returns function body fixed, based on return type, for example
+:function! GetFixedFunctionBody(Context, NewArgs)
+	let OldBody = GetFuncBody(a:NewArgs)		
+	let HasRetValue = BoolNot(IsVoidType(GetFuncRetType(a:NewArgs)))
+
+	"Must add semicon for all lines (except comments)
+	:call MakeAllLines_WithSemicolon(OldBody)
+
+	if(len(OldBody) != 1)
+		"Do NOT fix multiline or empty bodies
+		return OldBody
+	endif
+
+	let BodyLine = OldBody[0]
+
+	if(IsEmptyOrSpaced(BodyLine))
+		"For empty or spaced lines no fixation necessary
+		return OldBody
+	endif
+
+	if(HasRetValue)
+		let FixedBodyLine = BodyLine
+		let BodyLine_NoSemicolon = CppChopSemicolon(BodyLine)
+		let StartsLikeRetVal = StartsLikeReturnValueStatement(BodyLine)
+		if(BoolNot(StartsLikeRetVal))
+			let FixedBody = GetLines_ReturnStmt(BodyLine_NoSemicolon)
+			return FixedBody
+		endif
+	else 
+		return OldBody
+	endif
+
+	return OldBody
+:endfunction
 
 " Returns updated function args based on context
 :function! CmdFunc_GetUpdatedCppFunctionArgs(Context, FuncArgs)
 	let l:ContextType = GetContextType(a:Context)
 
 	let l:NewArgs = deepcopy(a:FuncArgs)
-
 
 	"Update options based on context
 	let l:Name = GetFuncName(a:FuncArgs)
@@ -2493,13 +2534,19 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		"Setter
 		let l:MemberName = strpart(l:Name, 2)
 	elseif(GetBoolFunctionPrefix(l:Name) != '')
-		"echo 'DEBUG: GetUpdatedCppFunctionArgs: HasBoolFuncionPrefix'
 		"Function starts with bool prefix (Is, Was, etc.)
-		:call SetFuncRetType(l:NewArgs, 'bool')
+		"echo 'DEBUG: GetUpdatedCppFunctionArgs: HasBoolFuncionPrefix'
+		if(IsVoidType(GetFuncRetType(l:NewArgs)))
+			:call SetFuncRetType(l:NewArgs, 'bool')
+		endif
 		:call AddFuncOps(l:NewArgs, ';const;')
 	endif
 
 	let l:NewArgs = CmdFunc_Module_GetUpdatedCppFunctionArgs(a:Context, l:NewArgs)
+
+	"Fix function body 
+	let l:FixedBody = GetFixedFunctionBody(a:Context, l:NewArgs)
+	:call SetFuncBody(l:NewArgs, l:FixedBody)
 
 	return l:NewArgs
 :endfunction
