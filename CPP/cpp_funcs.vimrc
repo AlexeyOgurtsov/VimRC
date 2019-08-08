@@ -863,7 +863,7 @@
 	:endif
 
 	:if (a:ReturnType != "void") && (a:ReturnType != "")
-		:call add(l:Lines, GetLines_ReturnStmt('{}'))
+		:call extend(l:Lines, GetLines_ReturnStmt('{}'))
 	:endif
 	return l:Lines
 :endfunction
