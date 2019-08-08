@@ -2330,12 +2330,9 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return GetFixedName(a:MemberName)
 :endfunction
 
-:function! GetKnownVarPrefix(VarName)
-	"WARNING! The longer prefixes must be placed before the shorter in the
-	"prefix list!
-	let PrefixList = ['pb', 'b', 'p']
+:function! GetGivenPrefix(VarName, PrefixList)
 	let PrefixFound = 0
-	:for RefPref in PrefixList
+	:for RefPref in a:PrefixList
 		if(stridx(a:VarName, RefPref) == 0)
 			"We found the prefix
 			let PrefixFound = 1
@@ -2352,6 +2349,13 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 		endif
 	endif
 	return ''
+:endfunction
+
+:function! GetKnownVarPrefix(VarName)
+	"WARNING! The longer prefixes must be placed before the shorter in the
+	"prefix list!
+	let PrefixList = ['pb', 'b', 'p']
+	return GetGivenPrefix(a:VarName, PrefixList)
 :endfunction
 
 :function! SplitVarName_KnownPrefixAndName(VarName)
