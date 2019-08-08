@@ -844,7 +844,7 @@
 	let l:formatted_decl_line = l:declaration_string.';'
 	:call append(a:LineNumber, l:formatted_decl_line)
 :endfunction
-"*** Calculates default return statemen lines for function (NOT indented)
+"*** Calculates default return statement lines for function (NOT indented)
 :function! GetLines_ReturnStmt(ValueStr)
 	let l:res_line = 'return'
 	if(len(a:ValueStr) > 0)
@@ -854,6 +854,31 @@
 	let l:res_line .= ';'
 	return [ l:res_line ]
 :endfunction
+
+"Returns true, if the given string starts with '\s*return\s\+'
+:function! StartsLikeReturnValueStatement(S)
+	return a:S =~# '^\s*return\s\+'
+:endfunction
+
+"Returns expression from the given return value statement
+"(may NOT end with semicolon)
+"If not return statement at all - returns '' (empty string)
+:function! GetReturnValueExpr(S)
+	return CppChopSemicolon(GetLexemsStringAfterGiven(a:S, 'return'))
+:endfunction
+
+:function! CppChopSemicolon(S)
+	return ChopStringFromRight(a:S, ';')
+:endfunction
+
+"Adds C++ semicolon, if not added yet
+:function! CppGetWithSemicolon(S)
+	if(len(CppChopSemicolon(a:S)) == len(a:S))
+		return a:S . ';'
+	endif
+	return a:S
+:endfunction
+
 :function! GetLines_DefaultReturnStmt(Name, ClassName, TemplParams, ContentString, ReturnType, OptionString)
 	let l:Lines = []
 
@@ -861,8 +886,7 @@
 	:if (a:Name==#"operator=")
 		return GetLines_ReturnStmt('*this')
 	:endif
-
-	:if (a:ReturnType != "void") && (a:ReturnType != "")
+	:if (IsNonVoidType(a:ReturnType))
 		:call extend(l:Lines, GetLines_ReturnStmt('{}'))
 	:endif
 	return l:Lines

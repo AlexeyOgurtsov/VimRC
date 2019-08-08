@@ -56,6 +56,39 @@
 	return ''
 :endfunction
 
+"Returns from the given string string that follows the given BeforeLexem
+"Lexems are separated by spaces
+"If the BeforeLexem not found, returns '' (empty string)
+"Case-sensitive
+:function! GetLexemsStringAfterGiven(S, BeforeLexem)
+	let before_lexem_idx = stridx(a:S, a:BeforeLexem)	
+	if(before_lexem_idx < 0)
+		return ''
+	endif
+	let after_before_lexem_idx = before_lexem_idx + len(a:BeforeLexem)
+	if(before_lexem_idx >= len(a:S) )
+		return ''
+	endif
+	let after_string = GetLeftSpacesTrimmed(strpart(a:S, after_before_lexem_idx))
+	return after_string
+:endfunction
+
+"Chops the given string from right, if there's such string
+"(if no such string, returns the passed string)
+:function! ChopStringFromRight(S, ChopString)
+	let chop_str_idx = stridx(a:S, a:ChopString)
+	if(chop_str_idx >= 0)
+		if(chop_str_idx + len(a:ChopString) == len(a:S))
+			return strpart(a:S, 0, chop_str_idx)
+		endif
+	endif
+	return a:S
+:endfunction
+
+:function! CppChopSemicolon(S)
+	return ChopStringFromRight(a:S, ';')
+:endfunction
+
 "Returns the prefix that the given string starts with,
 "or returns empty if does not start with any
 :function! StartsWithAny(S, Prefixes)
