@@ -1853,6 +1853,28 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	let g:CppVariableCmd_Name_ArgIndex = 0
 	let g:CppVariableCmd_RestString_ArgIndex = 1
 
+"Fix variable type
+"(for example, based on name)
+"Returns: fixed variale type string
+:function! FixVariableType(Context, BaseArgs, MyArgs, VariableGenArgList)
+	"If variable name is explicitly specified, we just keeping it
+	if(GetVariableRetType(a:VariableGenArgList) != '')
+		return GetVariableRetType(a:VariableGenArgList)
+	endif
+
+	let l:List_PrefixAndName = SplitVarName_KnownPrefixAndName(GetVariableName(a:VariableGenArgList))
+	let l:NamePrefix = l:List_PrefixAndName[0]
+	let l:CommonName = l:List_PrefixAndName[1]
+
+	if(l:NamePrefix == 'b')
+		let l:FixedReturnType = 'bool'
+	else
+		let l:FixedReturnType = GetVariableRetType(a:VariableGenArgList)
+	endif
+
+	return l:FixedReturnType
+:endfunction
+
 :function! GetUpdatedVariableArgs_FromRestOfArgs(Context, BaseArgs, MyArgs, RestArgsString, Options) 
 
 	"Checking custom args
@@ -1894,6 +1916,11 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	"Updating args
 
 	let VariableGenArgList = MakeVariableGenArgs(l:FixedName, l:TypeName, l:InitializerStr, l:Ops, l:Category, l:Comment)
+
+	"Fixing variable type
+	let l:FixedTypeName = FixVariableType(a:Context, a:BaseArgs, a:MyArgs, VariableGenArgList)
+	:call SetVariableRetType(VariableGenArgList, l:FixedTypeName)
+
 	"Check for return value and arguments validity after updated
 	if (InvalidVarArgs(VariableGenArgList))
 		return []
