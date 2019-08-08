@@ -2364,6 +2364,44 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	return [ Prefix, Name ]
 :endfunction
 
+"Returns the prefix that the given string starts with,
+"or returns empty if does not start with any
+:function! StartsWithAny(S, Prefixes)
+	let i = 0
+	while (i < len(a:Prefixes))
+		let CurrPrefix = a:Prefixes[i]
+		if(a:S =~# ('^'.CurrPrefix))
+			return CurrPrefix
+		endif
+		let i += 1
+	endwhile
+	return ''
+:endfunction
+
+:function! GetBoolFunctionPrefixes()
+	let PrefixList = ['Is', 'Has', 'Was']
+	return PrefixList
+:endfunction
+
+
+:function! GetBoolFunctionPrefix(S)
+	return StartsWithAny(a:S, GetBoolFunctionPrefixes())
+:endfunction
+
+:function! GetKnownFunctionPrefix(VarName)
+	"WARNING! The longer prefixes must be placed before the shorter in the
+	"prefix list!
+	let PrefixList = []
+	:call extend(PrefixList, GetBoolFunctionPrefixes())
+	return GetGivenPrefix(a:VarName, PrefixList)
+:endfunction
+
+:function! SplitFunctionName_KnownPrefixAndName(VarName)
+	let Prefix = GetKnownFunctionPrefix(a:VarName)
+	let Name = strpart(a:VarName, len(Prefix))
+	return [ Prefix, Name ]
+:endfunction
+
 :function! GetUpdatedCppFunctionArgs_Getter(Context, MemberName, FuncArgs)
 	let l:IsDebug = 0
 	if l:IsDebug
@@ -2454,6 +2492,7 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 
 	"Update options based on context
 	let l:Name = GetFuncName(a:FuncArgs)
+
 	if(l:Name =~# '^\.\w*')
 		"Getter
 		let l:MemberName = strpart(l:Name, 1)
@@ -2465,6 +2504,10 @@ let g:AddCode_CppVarOrField_InitExpr_ArgIndex = 5
 	elseif(l:Name =~# '^\.\.\w*')
 		"Setter
 		let l:MemberName = strpart(l:Name, 2)
+	elseif(GetBoolFunctionPrefix(l:Name) != '')
+		"echo 'DEBUG: GetUpdatedCppFunctionArgs: HasBoolFuncionPrefix'
+		"Function starts with bool prefix (Is, Was, etc.)
+		:call SetFuncRetType(l:NewArgs, 'bool')
 	endif
 
 	let l:NewArgs = CmdFunc_Module_GetUpdatedCppFunctionArgs(a:Context, l:NewArgs)
